@@ -8,6 +8,9 @@ WIDTH, HEIGHT = 800, 680
 CELL_SIZE = 20
 MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
+ENEMY_SPEED = CELL_SIZE // 20
+PLAYER_SPEED = CELL_SIZE // 10
+ESCAPE_ROUTES = max(1000, MAZE_WIDTH // 10)  # New constant for number of escape routes
 
 # Colors
 WHITE = (255, 255, 255)
@@ -116,6 +119,18 @@ class Game:
         start_x, start_y = random.randrange(3, width-3, 2), random.randrange(3, height-3, 2)
         carve_path(start_x, start_y)
         
+        # Add additional escape routes
+        for _ in range(ESCAPE_ROUTES):
+            x, y = random.randrange(1, width-1), random.randrange(1, height-1)
+            if maze[y][x] == 'X':
+                directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+                random.shuffle(directions)
+                for dx, dy in directions:
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < width and 0 <= ny < height and maze[ny][nx] == ' ':
+                        maze[y][x] = ' '
+                        break
+        
         # Add start point
         start_x, start_y = random.randrange(1, width-1), random.randrange(1, height-1)
         while maze[start_y][start_x] == 'X':
@@ -129,7 +144,7 @@ class Game:
             if 'S' in row:
                 x = row.index('S') * CELL_SIZE + CELL_SIZE // 2
                 y = y * CELL_SIZE + CELL_SIZE // 2
-                return Player(x, y, CELL_SIZE // 2 - 1, CELL_SIZE // 5)
+                return Player(x, y, CELL_SIZE // 2 - 1, PLAYER_SPEED)
 
     def create_coins(self, num_coins):
         coins = []
@@ -145,7 +160,7 @@ class Game:
         empty_cells = [(x, y) for y, row in enumerate(self.maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
-            return Enemy(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, CELL_SIZE // 10)
+            return Enemy(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, ENEMY_SPEED)
         return None
 
     def find_path(self, start, goal):
