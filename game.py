@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+from collections import deque
 
 # Constants
 WIDTH, HEIGHT = 800, 680
@@ -50,13 +51,28 @@ class Coin:
         pygame.draw.circle(screen, YELLOW, (self.x + offset_x, self.y + offset_y), self.radius)
 
 class Enemy:
-    def __init__(self, x, y, radius):
+    def __init__(self, x, y, radius, speed):
         self.x = x
         self.y = y
         self.radius = radius
+        self.speed = speed
+        self.path = []
+
+    def move_along_path(self):
+        if self.path:
+            target_x, target_y = self.path[0]
+            dx = target_x - self.x
+            dy = target_y - self.y
+            distance = ((dx ** 2) + (dy ** 2)) ** 0.5
+            
+            if distance < self.speed:
+                self.x, self.y = self.path.pop(0)
+            else:
+                self.x += (dx / distance) * self.speed
+                self.y += (dy / distance) * self.speed
 
     def draw(self, screen, offset_x, offset_y):
-        pygame.draw.circle(screen, RED, (self.x + offset_x, self.y + offset_y), self.radius)
+        pygame.draw.circle(screen, RED, (int(self.x + offset_x), int(self.y + offset_y)), self.radius)
 
 class Game:
     def __init__(self):
@@ -128,8 +144,39 @@ class Game:
         empty_cells = [(x, y) for y, row in enumerate(self.maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
-            return Enemy(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, 15)
+            return Enemy(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, 15, 2)
         return None
+
+    def find_path(self, start, goal):
+        queue = deque([[start]])
+        visited = set([start])
+        
+        while queue:
+            path = queue.popleft()
+            x, y = path[-1]
+            
+            if (x, y) == goal:
+                return path
+            
+            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                next_x, next_y = x + dx, y + dy
+                if (0 <= next_x < MAZE_WIDTH and 0 <= next_y < MAZE_HEIGHT and
+                    self.maze[next_y][next_x] != 'X' and (next_x, next_y) not in visited):
+                    queue.append(path + [(next_x, next_y)])
+                    visited.add((next_x, next_y))
+        
+        return None
+
+    def update_enemy(self):
+        if self.enemy:
+            if not self.enemy.path:
+                start = (int(self.enemy.x // CELL_SIZE), int(self.enemy.y // CELL_SIZE))
+                goal = (int(self.player.x // CELL_SIZE), int(self.player.y // CELL_SIZE))
+                path = self.find_path(start, goal)
+                if path:
+                    self.enemy.path = [(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2) for x, y in path[1:]]
+            
+            self.enemy.move_along_path()
 
     def check_collision(self, x, y):
         for dy in [-1, 0, 1]:
@@ -222,6 +269,7 @@ class Game:
                 self.player.x = max(self.player.radius, min(WIDTH - self.player.radius, self.player.x))  # Change this line
                 self.player.y = max(self.player.radius, min(HEIGHT - self.player.radius, self.player.y))  # Change this line
 
+                self.update_enemy()
                 self.collect_coins()
                 self.check_enemy_collision()  # Add this line
 
