@@ -56,13 +56,17 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         
+        self.level = 1
+        self.init_level()
+
+        self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
+        self.offset_y = SCORE_AREA_HEIGHT
+
+    def init_level(self):
         self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
         self.circle = self.create_circle()
         self.coins = self.create_coins(10)
         self.score = 0
-
-        self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
-        self.offset_y = SCORE_AREA_HEIGHT
 
     def generate_maze(self, width, height):
         # Initialize the maze with walls
@@ -125,6 +129,13 @@ class Game:
             if circle_rect.colliderect(coin_rect):
                 self.coins.remove(coin)
                 self.score += 10
+        
+        if not self.coins:
+            self.level_complete()
+
+    def level_complete(self):
+        self.level += 1
+        self.init_level()
 
     def draw(self):
         self.screen.fill(WHITE)
@@ -144,6 +155,10 @@ class Game:
         score_text = self.font.render(f"Score: {self.score}", True, BLACK)
         score_rect = score_text.get_rect(midleft=(10, SCORE_AREA_HEIGHT // 2))
         self.screen.blit(score_text, score_rect)
+
+        level_text = self.font.render(f"Level: {self.level}", True, BLACK)
+        level_rect = level_text.get_rect(midright=(WIDTH - 10, SCORE_AREA_HEIGHT // 2))
+        self.screen.blit(level_text, level_rect)
 
     def run(self):
         running = True
