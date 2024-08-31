@@ -5,7 +5,7 @@ import random
 # Constants
 WIDTH, HEIGHT = 800, 680
 CELL_SIZE = 40
-MAZE_WIDTH, MAZE_HEIGHT = 19, 15
+MAZE_WIDTH, MAZE_HEIGHT = 20, 15  # Changed from 19 to 20
 SCORE_AREA_HEIGHT = 40
 
 # Colors
@@ -59,7 +59,7 @@ class Game:
         self.level = 1
         self.init_level()
 
-        self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
+        self.offset_x = 0  # Changed from (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2 to 0
         self.offset_y = SCORE_AREA_HEIGHT
 
     def init_level(self):
@@ -138,14 +138,14 @@ class Game:
         self.init_level()
 
     def draw(self):
-        self.screen.fill(WHITE)
+        self.screen.fill(GREEN)  # Changed from WHITE to GREEN
         pygame.draw.rect(self.screen, LIGHT_GREEN, (0, 0, WIDTH, SCORE_AREA_HEIGHT))
         pygame.draw.line(self.screen, BLACK, (0, SCORE_AREA_HEIGHT), (WIDTH, SCORE_AREA_HEIGHT), 2)
 
         for y, row in enumerate(self.maze):
             for x, cell in enumerate(row):
-                if cell == 'X':
-                    pygame.draw.rect(self.screen, GREEN, (x * CELL_SIZE + self.offset_x, y * CELL_SIZE + self.offset_y, CELL_SIZE, CELL_SIZE))
+                if cell == ' ' or cell == 'S':  # Draw white rectangles for paths
+                    pygame.draw.rect(self.screen, WHITE, (x * CELL_SIZE + self.offset_x, y * CELL_SIZE + self.offset_y, CELL_SIZE, CELL_SIZE))
 
         for coin in self.coins:
             coin.draw(self.screen, self.offset_x, self.offset_y)
