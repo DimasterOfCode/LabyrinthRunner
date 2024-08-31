@@ -15,9 +15,10 @@ GREEN = (0, 128, 0)
 LIGHT_GREEN = (144, 238, 144)
 YELLOW = (200, 200, 0)
 LIGHT_BROWN = (205, 133, 63)
+RED = (255, 0, 0)  # Add this line for the enemy color
 
 # Game objects
-class Circle:
+class Player:
     def __init__(self, x, y, radius, speed):
         self.x = x
         self.y = y
@@ -48,6 +49,15 @@ class Coin:
     def draw(self, screen, offset_x, offset_y):
         pygame.draw.circle(screen, YELLOW, (self.x + offset_x, self.y + offset_y), self.radius)
 
+class Enemy:
+    def __init__(self, x, y, radius):
+        self.x = x
+        self.y = y
+        self.radius = radius
+
+    def draw(self, screen, offset_x, offset_y):
+        pygame.draw.circle(screen, RED, (self.x + offset_x, self.y + offset_y), self.radius)
+
 class Game:
     def __init__(self):
         pygame.init()
@@ -57,15 +67,18 @@ class Game:
         self.font = pygame.font.Font(None, 36)
         
         self.level = 1
+        self.player = None  # Change this line
         self.init_level()
 
         self.offset_x = 0  # Changed from (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2 to 0
         self.offset_y = SCORE_AREA_HEIGHT
+        self.game_over = False  # Add this line
 
     def init_level(self):
         self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
-        self.circle = self.create_circle()
+        self.player = self.create_player()  # Change this line
         self.coins = self.create_coins(10)
+        self.enemy = self.create_enemy()
         self.score = 0
 
     def generate_maze(self, width, height):
@@ -94,12 +107,12 @@ class Game:
         
         return [''.join(row) for row in maze]
 
-    def create_circle(self):
+    def create_player(self):  # Rename this method
         for y, row in enumerate(self.maze):
             if 'S' in row:
                 x = row.index('S') * CELL_SIZE + CELL_SIZE // 2
                 y = y * CELL_SIZE + CELL_SIZE // 2
-                return Circle(x, y, 15, 4)
+                return Player(x, y, 15, 4)  # Change this line
 
     def create_coins(self, num_coins):
         coins = []
@@ -111,22 +124,29 @@ class Game:
                 empty_cells.remove((x, y))
         return coins
 
+    def create_enemy(self):
+        empty_cells = [(x, y) for y, row in enumerate(self.maze) for x, cell in enumerate(row) if cell == ' ']
+        if empty_cells:
+            x, y = random.choice(empty_cells)
+            return Enemy(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, 15)
+        return None
+
     def check_collision(self, x, y):
         for dy in [-1, 0, 1]:
             for dx in [-1, 0, 1]:
-                cell_x = int((x + dx * self.circle.radius) // CELL_SIZE)
-                cell_y = int((y + dy * self.circle.radius) // CELL_SIZE)
+                cell_x = int((x + dx * self.player.radius) // CELL_SIZE)  # Change this line
+                cell_y = int((y + dy * self.player.radius) // CELL_SIZE)  # Change this line
                 if self.maze[cell_y][cell_x] == 'X':
                     return True
         return False
 
     def collect_coins(self):
-        circle_rect = pygame.Rect(self.circle.x - self.circle.radius, self.circle.y - self.circle.radius, 
-                                  self.circle.radius * 2, self.circle.radius * 2)
+        player_rect = pygame.Rect(self.player.x - self.player.radius, self.player.y - self.player.radius,   # Change these lines
+                                  self.player.radius * 2, self.player.radius * 2)
         for coin in self.coins[:]:
             coin_rect = pygame.Rect(coin.x - coin.radius, coin.y - coin.radius, 
                                     coin.radius * 2, coin.radius * 2)
-            if circle_rect.colliderect(coin_rect):
+            if player_rect.colliderect(coin_rect):
                 self.coins.remove(coin)
                 self.score += 10
         
@@ -136,6 +156,14 @@ class Game:
     def level_complete(self):
         self.level += 1
         self.init_level()
+
+    def check_enemy_collision(self):
+        player_rect = pygame.Rect(self.player.x - self.player.radius, self.player.y - self.player.radius,
+                                  self.player.radius * 2, self.player.radius * 2)
+        enemy_rect = pygame.Rect(self.enemy.x - self.enemy.radius, self.enemy.y - self.enemy.radius,
+                                 self.enemy.radius * 2, self.enemy.radius * 2)
+        if player_rect.colliderect(enemy_rect):
+            self.game_over = True
 
     def draw(self):
         self.screen.fill(GREEN)  # Changed from WHITE to GREEN
@@ -150,7 +178,15 @@ class Game:
         for coin in self.coins:
             coin.draw(self.screen, self.offset_x, self.offset_y)
 
-        self.circle.draw(self.screen, self.offset_x, self.offset_y)
+        if self.enemy:  # Add these lines
+            self.enemy.draw(self.screen, self.offset_x, self.offset_y)
+
+        self.player.draw(self.screen, self.offset_x, self.offset_y)  # Change this line
+
+        if self.game_over:
+            game_over_text = self.font.render("GAME OVER", True, RED)
+            game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            self.screen.blit(game_over_text, game_over_rect)
 
         score_text = self.font.render(f"Score: {self.score}", True, BLACK)
         score_rect = score_text.get_rect(midleft=(10, SCORE_AREA_HEIGHT // 2))
@@ -168,21 +204,27 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                if event.type == pygame.KEYDOWN and self.game_over:
+                    if event.key == pygame.K_SPACE:
+                        self.__init__()  # Restart the game
 
-            keys = pygame.key.get_pressed()
-            dx = keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]
-            dy = keys[pygame.K_DOWN] - keys[pygame.K_UP]
+            if not self.game_over:
+                keys = pygame.key.get_pressed()
+                dx = keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]
+                dy = keys[pygame.K_DOWN] - keys[pygame.K_UP]
 
-            new_x = self.circle.x + dx * self.circle.speed
-            new_y = self.circle.y + dy * self.circle.speed
+                new_x = self.player.x + dx * self.player.speed  # Change this line
+                new_y = self.player.y + dy * self.player.speed  # Change this line
 
-            if not self.check_collision(new_x, new_y):
-                self.circle.move(dx, dy)
+                if not self.check_collision(new_x, new_y):
+                    self.player.move(dx, dy)  # Change this line
 
-            self.circle.x = max(self.circle.radius, min(WIDTH - self.circle.radius, self.circle.x))
-            self.circle.y = max(self.circle.radius, min(HEIGHT - self.circle.radius, self.circle.y))
+                self.player.x = max(self.player.radius, min(WIDTH - self.player.radius, self.player.x))  # Change this line
+                self.player.y = max(self.player.radius, min(HEIGHT - self.player.radius, self.player.y))  # Change this line
 
-            self.collect_coins()
+                self.collect_coins()
+                self.check_enemy_collision()  # Add this line
+
             self.draw()
             pygame.display.flip()
 
