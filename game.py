@@ -3,6 +3,8 @@ import sys
 import random
 from collections import deque
 import time  # Add this import
+import json
+import os
 
 # Constants
 FPS = 60
@@ -10,8 +12,8 @@ WIDTH, HEIGHT = 800, 680
 CELL_SIZE = 20
 MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
-ENEMY_SPEED = CELL_SIZE // 20
-PLAYER_SPEED = CELL_SIZE // 1
+ENEMY_SPEED = CELL_SIZE // 7
+PLAYER_SPEED = CELL_SIZE // 4
 ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)  # New constant for number of escape routes
 DEV_MODE = True  # New constant for dev mode
 
@@ -81,6 +83,8 @@ class Enemy:
         self.radius = radius
         self.speed = speed
         self.path = []
+        self.start_time = time.time()  # Add this line
+        self.chase_delay = 3  # Add this line
 
     def move_along_path(self):
         if self.path:
@@ -98,6 +102,9 @@ class Enemy:
     def draw(self, screen, offset_x, offset_y):
         pygame.draw.circle(screen, RED, (int(self.x + offset_x), int(self.y + offset_y)), self.radius)
 
+    def should_chase(self):  # Add this method
+        return time.time() - self.start_time >= self.chase_delay
+
 class Game:
     def __init__(self):
         pygame.init()
@@ -109,7 +116,15 @@ class Game:
         self.level = 1
         self.dev_mode = False
         self.dev_maze = None
-        self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+        self.maze_file = "custom_maze.json"
+        
+        # Try to load the maze from file
+        if os.path.exists(self.maze_file):
+            self.load_maze_from_file()
+        else:
+            # If no file exists, generate a random maze
+            self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+        
         self.player = self.create_player()
         if self.player is None:
             raise ValueError("Failed to create player")
@@ -225,14 +240,15 @@ class Game:
 
     def update_enemy(self):
         if self.enemy:
-            if not self.enemy.path:
-                start = (int(self.enemy.x // CELL_SIZE), int(self.enemy.y // CELL_SIZE))
-                goal = (int(self.player.x // CELL_SIZE), int(self.player.y // CELL_SIZE))
-                path = self.find_path(start, goal)
-                if path:
-                    self.enemy.path = [(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2) for x, y in path[1:]]
-            
-            self.enemy.move_along_path()
+            if self.enemy.should_chase():  # Add this condition
+                if not self.enemy.path:
+                    start = (int(self.enemy.x // CELL_SIZE), int(self.enemy.y // CELL_SIZE))
+                    goal = (int(self.player.x // CELL_SIZE), int(self.player.y // CELL_SIZE))
+                    path = self.find_path(start, goal)
+                    if path:
+                        self.enemy.path = [(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2) for x, y in path[1:]]
+                
+                self.enemy.move_along_path()
 
     def check_collision(self, x, y):
         for dy in [-1, 0, 1]:
@@ -260,7 +276,13 @@ class Game:
 
     def level_complete(self):
         self.level += 1
+        self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+        self.player = self.create_player()
         self.init_level()
+        
+        # Reset enemy start time for the new level
+        if self.enemy:
+            self.enemy.start_time = time.time()
 
     def check_enemy_collision(self):
         player_rect = pygame.Rect(self.player.x - self.player.radius, self.player.y - self.player.radius,
@@ -298,6 +320,7 @@ class Game:
         self.player = self.create_player()
         self.enemy = self.create_enemy()
         self.init_level()
+        self.save_maze_to_file()
 
     def toggle_dev_mode(self):
         self.dev_mode = not self.dev_mode
@@ -324,6 +347,11 @@ class Game:
 
         if self.enemy:
             self.enemy.draw(self.screen, self.offset_x, self.offset_y)
+            if not self.enemy.should_chase():  # Add this condition
+                countdown = int(self.enemy.chase_delay - (time.time() - self.enemy.start_time))
+                countdown_text = self.font.render(f"Chase starts in: {countdown}", True, RED)
+                countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
+                self.screen.blit(countdown_text, countdown_rect)
 
         if self.player:
             self.player.draw(self.screen, self.offset_x, self.offset_y)
@@ -354,14 +382,33 @@ class Game:
                     elif cell == 'E':
                         pygame.draw.rect(self.screen, RED, rect)
             
-            dev_text = self.font.render("Dev Mode: Click to toggle cells (Wall -> Empty -> Start -> Enemy), SPACE to save, D to exit", True, BLACK)
+            dev_text = self.font.render("Dev Mode: Click to toggle cells (Wall -> Empty -> Start -> Enemy), SPACE to save, D to exit, L to load", True, BLACK)
             dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_text, dev_rect)
         else:
-            # Add instructions for entering dev mode
-            dev_hint = self.font.render("Press D for Dev Mode", True, BLACK)
+            # Add instructions for entering dev mode and loading maze
+            dev_hint = self.font.render("Press D for Dev Mode, L to Load Maze", True, BLACK)
             dev_hint_rect = dev_hint.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_hint, dev_hint_rect)
+
+    def save_maze_to_file(self):
+        maze_data = {
+            "maze": self.dev_maze,
+            "level": self.level,
+            "score": self.score
+        }
+        with open(self.maze_file, 'w') as f:
+            json.dump(maze_data, f)
+        print(f"Maze saved to {self.maze_file}")
+
+    def load_maze_from_file(self):
+        with open(self.maze_file, 'r') as f:
+            maze_data = json.load(f)
+        self.dev_maze = maze_data["maze"]
+        self.level = maze_data["level"]
+        self.score = maze_data["score"]
+        self.maze = [''.join(row) for row in self.dev_maze]
+        print(f"Maze loaded from {self.maze_file}")
 
     def run(self):
         running = True
@@ -378,6 +425,8 @@ class Game:
                         self.toggle_dev_mode()
                     elif self.dev_mode and event.key == pygame.K_SPACE:
                         self.save_dev_maze()
+                    elif event.key == pygame.K_l:
+                        self.load_maze_from_file()
                     elif self.game_over:
                         if event.key == pygame.K_SPACE:
                             self.__init__()
