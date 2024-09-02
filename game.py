@@ -157,7 +157,7 @@ class Game:
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
         self.offset_y = SCORE_AREA_HEIGHT
         self.game_over = False
-        self.game_won = False
+        self.level_complete = False
 
     def init_dev_mode(self):
         if self.dev_maze is None:
@@ -246,6 +246,12 @@ class Game:
 
     def create_star(self):
         current_maze = self.dev_maze if self.dev_mode else self.maze
+        for y, row in enumerate(current_maze):
+            if '*' in row:
+                x = row.index('*')
+                return Star(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2)
+        
+        # If '*' is not found, place the star at a random empty cell
         empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
@@ -305,20 +311,19 @@ class Game:
                 self.coins.remove(coin)
                 self.score += 10
         
-        if not self.coins:
-            self.level_complete()
-
         if self.star:
             star_rect = pygame.Rect(self.star.x - self.star.radius, self.star.y - self.star.radius, 
                                     self.star.radius * 2, self.star.radius * 2)
             if player_rect.colliderect(star_rect):
-                self.game_won = True
+                self.level_complete = True
+                self.star = None  # Remove the star after collection
 
-    def level_complete(self):
+    def next_level(self):
         self.level += 1
         self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
         self.player = self.create_player()
         self.init_level()
+        self.level_complete = False
         
         # Reset enemy start time for the new level
         if self.enemy:
@@ -406,10 +411,6 @@ class Game:
             game_over_text = self.font.render("GAME OVER", True, RED)
             game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
             self.screen.blit(game_over_text, game_over_rect)
-        elif self.game_won:
-            game_won_text = self.font.render("YOU WIN!", True, GOLD)
-            game_won_rect = game_won_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-            self.screen.blit(game_won_text, game_won_rect)
 
         score_text = self.font.render(f"Score: {self.score}", True, BLACK)
         score_rect = score_text.get_rect(midleft=(10, SCORE_AREA_HEIGHT // 2))
@@ -418,6 +419,11 @@ class Game:
         level_text = self.font.render(f"Level: {self.level}", True, BLACK)
         level_rect = level_text.get_rect(midright=(WIDTH - 10, SCORE_AREA_HEIGHT // 2))
         self.screen.blit(level_text, level_rect)
+
+        if self.level_complete:
+            level_complete_text = self.font.render("Level Complete! Press N for next level", True, GOLD)
+            level_complete_rect = level_complete_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            self.screen.blit(level_complete_text, level_complete_rect)
 
         if self.dev_mode:
             for y, row in enumerate(self.dev_maze):
@@ -460,7 +466,10 @@ class Game:
         self.level = maze_data["level"]
         self.score = maze_data["score"]
         self.maze = [''.join(row) for row in self.dev_maze]
+        self.player = self.create_player()
+        self.enemy = self.create_enemy()
         self.star = self.create_star()
+        self.coins = self.create_coins(10)  # Recreate coins
         print(f"Maze loaded from {self.maze_file}")
 
     def run(self):
@@ -483,6 +492,9 @@ class Game:
                     elif self.game_over:
                         if event.key == pygame.K_SPACE:
                             self.__init__()
+                    elif self.level_complete:
+                        if event.key == pygame.K_n:
+                            self.next_level()
                     else:
                         if event.key == pygame.K_RIGHT:
                             self.player.set_direction((1, 0))
@@ -493,7 +505,7 @@ class Game:
                         elif event.key == pygame.K_UP:
                             self.player.set_direction((0, -1))
 
-            if not self.game_over and not self.game_won and not self.dev_mode:
+            if not self.game_over and not self.dev_mode and not self.level_complete:
                 self.player.update()
                 self.update_enemy()
                 self.collect_coins()
