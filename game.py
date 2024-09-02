@@ -28,6 +28,7 @@ YELLOW = (200, 200, 0)
 LIGHT_BROWN = (205, 133, 63)
 RED = (255, 0, 0)
 GOLD = (255, 215, 0)
+CYAN = (0, 255, 255)  # New color for diamonds
 
 # Game objects
 class Player:
@@ -125,6 +126,21 @@ class Star:
             (self.x - self.radius * 0.3 + offset_x, self.y + self.radius * 0.4 + offset_y),
         ])
 
+class Diamond:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.radius = CELL_SIZE // 2
+
+    def draw(self, screen, offset_x, offset_y):
+        points = [
+            (self.x + offset_x, self.y - self.radius + offset_y),
+            (self.x + self.radius + offset_x, self.y + offset_y),
+            (self.x + offset_x, self.y + self.radius + offset_y),
+            (self.x - self.radius + offset_x, self.y + offset_y),
+        ]
+        pygame.draw.polygon(screen, CYAN, points)
+
 class Game:
     def __init__(self):
         pygame.init()
@@ -148,6 +164,7 @@ class Game:
             raise ValueError("Failed to create player")
         self.enemy = None
         self.star = None
+        self.diamonds = []
         self.init_level()
 
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
@@ -163,12 +180,14 @@ class Game:
         self.coins = []
         self.enemy = self.create_enemy()
         self.star = None
+        self.diamonds = []
         self.score = 0
 
     def init_level(self):
         self.coins = self.create_coins(0)
         self.enemy = self.create_enemy()
         self.star = self.create_star()
+        self.diamonds = self.create_diamonds()
         self.score = 0
 
     def generate_maze(self, width, height):
@@ -246,6 +265,15 @@ class Game:
             return Star(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2)
         return None
 
+    def create_diamonds(self):
+        diamonds = []
+        current_maze = self.dev_maze if self.dev_mode else self.maze
+        for y, row in enumerate(current_maze):
+            for x, cell in enumerate(row):
+                if cell == 'D':
+                    diamonds.append(Diamond(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2))
+        return diamonds
+
     def find_path(self, start, goal):
         queue = deque([[start]])
         visited = set([start])
@@ -306,6 +334,13 @@ class Game:
                 self.level_complete = True
                 self.star = None
 
+        for diamond in self.diamonds[:]:
+            diamond_rect = pygame.Rect(diamond.x - diamond.radius, diamond.y - diamond.radius, 
+                                       diamond.radius * 2, diamond.radius * 2)
+            if player_rect.colliderect(diamond_rect):
+                self.diamonds.remove(diamond)
+                self.score += 10000
+
     def next_level(self):
         self.level += 1
         self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
@@ -340,6 +375,8 @@ class Game:
                 self.dev_maze[y][x] = '*'
                 self.remove_duplicate('*', x, y)
             elif self.dev_maze[y][x] == '*':
+                self.dev_maze[y][x] = 'D'
+            elif self.dev_maze[y][x] == 'D':
                 self.dev_maze[y][x] = 'X'
 
     def remove_duplicate(self, char, new_x, new_y):
@@ -393,6 +430,9 @@ class Game:
         if self.star:
             self.star.draw(self.screen, self.offset_x, self.offset_y)
 
+        for diamond in self.diamonds:
+            diamond.draw(self.screen, self.offset_x, self.offset_y)
+
         if self.game_over:
             game_over_text = self.font.render("GAME OVER", True, RED)
             game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
@@ -425,8 +465,10 @@ class Game:
                         pygame.draw.rect(self.screen, RED, rect)
                     elif cell == '*':
                         pygame.draw.rect(self.screen, GOLD, rect)
+                    elif cell == 'D':
+                        pygame.draw.rect(self.screen, CYAN, rect)
             
-            dev_text = self.font.render("Dev Mode: Click to toggle cells (Wall -> Empty -> Start -> Enemy -> Star), SPACE to save, D to exit, L to load", True, BLACK)
+            dev_text = self.font.render("Dev Mode: Click to toggle cells (Wall -> Empty -> Start -> Enemy -> Star -> Diamond), SPACE to save, D to exit, L to load", True, BLACK)
             dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_text, dev_rect)
         else:
@@ -455,6 +497,7 @@ class Game:
         self.enemy = self.create_enemy()
         self.star = self.create_star()
         self.coins = self.create_coins(0)
+        self.diamonds = self.create_diamonds()
         print(f"Maze loaded from {self.maze_file}")
 
     def run(self):
