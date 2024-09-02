@@ -74,7 +74,8 @@ class Coin:
         pygame.draw.circle(screen, YELLOW, (self.x + offset_x, self.y + offset_y), self.radius)
 
 class Enemy:
-    def __init__(self, x, y, radius, speed):
+    def __init__(self, game, x, y, radius, speed):
+        self.game = game
         self.x = x
         self.y = y
         self.radius = radius
@@ -112,6 +113,7 @@ class Game:
         self.player = self.create_player()
         if self.player is None:
             raise ValueError("Failed to create player")
+        self.enemy = None
         self.init_level()  # Initialize other game elements
 
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
@@ -121,10 +123,11 @@ class Game:
     def init_dev_mode(self):
         if self.dev_maze is None:
             self.dev_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
-            # Add a default start position
+            # Add default start positions
             self.dev_maze[1][1] = 'S'
+            self.dev_maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
         self.coins = []
-        self.enemy = None
+        self.enemy = self.create_enemy()
         self.score = 0
 
     def init_level(self):
@@ -186,11 +189,19 @@ class Game:
         return coins
 
     def create_enemy(self):
-        empty_cells = [(x, y) for y, row in enumerate(self.maze) for x, cell in enumerate(row) if cell == ' ']
+        current_maze = self.dev_maze if self.dev_mode else self.maze
+        for y, row in enumerate(current_maze):
+            if 'E' in row:
+                x = row.index('E')
+                return Enemy(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, ENEMY_SPEED)
+        
+        # If 'E' is not found, place the enemy at a random empty cell
+        empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
-            return Enemy(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, ENEMY_SPEED)
-        return None
+            return Enemy(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, ENEMY_SPEED)
+        
+        return None  # If no valid position is found
 
     def find_path(self, start, goal):
         queue = deque([[start]])
@@ -266,18 +277,26 @@ class Game:
             if self.dev_maze[y][x] == 'X':
                 self.dev_maze[y][x] = ' '
             elif self.dev_maze[y][x] == ' ':
-                # Remove the old start position if it exists
-                for row in self.dev_maze:
-                    if 'S' in row:
-                        row[row.index('S')] = ' '
+                # Cycle through: Empty -> Start -> Enemy -> Wall
                 self.dev_maze[y][x] = 'S'
+                self.remove_duplicate('S', x, y)
             elif self.dev_maze[y][x] == 'S':
+                self.dev_maze[y][x] = 'E'
+                self.remove_duplicate('E', x, y)
+            elif self.dev_maze[y][x] == 'E':
                 self.dev_maze[y][x] = 'X'
+
+    def remove_duplicate(self, char, new_x, new_y):
+        for y, row in enumerate(self.dev_maze):
+            for x, cell in enumerate(row):
+                if cell == char and (x != new_x or y != new_y):
+                    self.dev_maze[y][x] = ' '
 
     def save_dev_maze(self):
         self.maze = [''.join(row) for row in self.dev_maze]
         self.dev_mode = False
         self.player = self.create_player()
+        self.enemy = self.create_enemy()
         self.init_level()
 
     def toggle_dev_mode(self):
@@ -288,6 +307,7 @@ class Game:
             self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
             self.init_level()
         self.player = self.create_player()
+        self.enemy = self.create_enemy()
 
     def draw(self):
         self.screen.fill(GREEN)
@@ -331,8 +351,10 @@ class Game:
                         pygame.draw.rect(self.screen, WHITE, rect)
                     elif cell == 'S':
                         pygame.draw.rect(self.screen, LIGHT_BROWN, rect)
+                    elif cell == 'E':
+                        pygame.draw.rect(self.screen, RED, rect)
             
-            dev_text = self.font.render("Dev Mode: Click to toggle cells, SPACE to save, D to exit", True, BLACK)
+            dev_text = self.font.render("Dev Mode: Click to toggle cells (Wall -> Empty -> Start -> Enemy), SPACE to save, D to exit", True, BLACK)
             dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_text, dev_rect)
         else:
