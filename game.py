@@ -104,7 +104,12 @@ class Game:
         
         self.level = 1
         self.player = None
-        self.init_level()
+        try:
+            self.init_level()
+        except ValueError as e:
+            print(f"Error initializing level: {e}")
+            pygame.quit()
+            sys.exit(1)
 
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
         self.offset_y = SCORE_AREA_HEIGHT
@@ -113,6 +118,8 @@ class Game:
     def init_level(self):
         self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
         self.player = self.create_player()
+        if self.player is None:
+            raise ValueError("Failed to create player")
         self.coins = self.create_coins(10)
         self.enemy = self.create_enemy()
         self.score = 0
@@ -123,35 +130,24 @@ class Game:
         
         def carve_path(x, y):
             maze[y][x] = ' '
-            directions = [(0, 2), (2, 0), (0, -2), (-2, 0)]
+            directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
             random.shuffle(directions)
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
-                if 1 < nx < width-2 and 1 < ny < height-2 and maze[ny][nx] == 'X':
-                    maze[y + dy//2][x + dx//2] = ' '
-                    carve_path(nx, ny)
-        
+                if 0 <= nx < width and 0 <= ny < height and maze[ny][nx] == 'X':
+                    maze[ny][nx] = ' '
+                    return nx, ny
+            return None
+
         # Start carving from a random point
-        start_x, start_y = random.randrange(3, width-3, 2), random.randrange(3, height-3, 2)
-        carve_path(start_x, start_y)
+        x, y = random.randrange(1, width-1), random.randrange(1, height-1)
+        maze[y][x] = 'S'  # Set start point
         
-        # Add additional escape routes
-        for _ in range(ESCAPE_ROUTES):
-            x, y = random.randrange(1, width-1), random.randrange(1, height-1)
-            if maze[y][x] == 'X':
-                directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-                random.shuffle(directions)
-                for dx, dy in directions:
-                    nx, ny = x + dx, y + dy
-                    if 0 <= nx < width and 0 <= ny < height and maze[ny][nx] == ' ':
-                        maze[y][x] = ' '
-                        break
-        
-        # Add start point
-        start_x, start_y = random.randrange(1, width-1), random.randrange(1, height-1)
-        while maze[start_y][start_x] == 'X':
-            start_x, start_y = random.randrange(1, width-1), random.randrange(1, height-1)
-        maze[start_y][start_x] = 'S'
+        while True:
+            next_pos = carve_path(x, y)
+            if next_pos is None:
+                break
+            x, y = next_pos
         
         return [''.join(row) for row in maze]
 
@@ -160,7 +156,16 @@ class Game:
             if 'S' in row:
                 x = row.index('S') * CELL_SIZE + CELL_SIZE // 2
                 y = y * CELL_SIZE + CELL_SIZE // 2
-                return Player(self, x, y, CELL_SIZE // 2 - 1, PLAYER_SPEED)  # Pass 'self' here
+                return Player(self, x, y, CELL_SIZE // 2 - 1, PLAYER_SPEED)
+        
+        # If 'S' is not found, place the player at a random empty cell
+        empty_cells = [(x, y) for y, row in enumerate(self.maze) for x, cell in enumerate(row) if cell == ' ']
+        if empty_cells:
+            x, y = random.choice(empty_cells)
+            return Player(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, PLAYER_SPEED)
+        
+        # If there are no empty cells, raise an exception
+        raise ValueError("No valid position found for the player")
 
     def create_coins(self, num_coins):
         coins = []
@@ -215,7 +220,9 @@ class Game:
             for dx in [-1, 0, 1]:
                 cell_x = int((x + dx * self.player.radius) // CELL_SIZE)
                 cell_y = int((y + dy * self.player.radius) // CELL_SIZE)
-                if self.maze[cell_y][cell_x] == 'X':
+                if (cell_x < 0 or cell_x >= MAZE_WIDTH or
+                    cell_y < 0 or cell_y >= MAZE_HEIGHT or
+                    self.maze[cell_y][cell_x] == 'X'):
                     return True
         return False
 
