@@ -16,7 +16,7 @@ ENEMY_SPEED = CELL_SIZE // 6
 PLAYER_SPEED = CELL_SIZE // 4
 ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)
 DEV_MODE = True
-ENEMY_CHASE_DELAY = 0.5
+ENEMY_CHASE_DELAY = 2
 COIN_RADIUS = CELL_SIZE // 5  # New constant for coin radius
 
 # Colors
@@ -172,6 +172,7 @@ class Game:
         self.offset_y = SCORE_AREA_HEIGHT
         self.game_over = False
         self.level_complete = False
+        self.is_drawing = False  # New attribute to track if we're currently drawing
 
     def init_dev_mode(self):
         if self.dev_maze is None:
@@ -468,6 +469,10 @@ class Game:
             selected_text = self.font.render(f"Selected: {self.dev_selected_item if self.dev_selected_item != ' ' else 'Empty'}", True, BLACK)
             selected_rect = selected_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 40))
             self.screen.blit(selected_text, selected_rect)
+
+            draw_text = self.font.render("Click and drag to draw", True, BLACK)
+            draw_rect = draw_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 70))
+            self.screen.blit(draw_text, draw_rect)
         else:
             dev_hint = self.font.render("Press D for Dev Mode, L to Load Maze", True, BLACK)
             dev_hint_rect = dev_hint.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
@@ -505,8 +510,14 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                if event.type == pygame.MOUSEBUTTONDOWN and self.dev_mode:
-                    self.handle_dev_mode_input(event.pos)
+                if self.dev_mode:
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        self.is_drawing = True
+                        self.handle_dev_mode_input(event.pos)
+                    elif event.type == pygame.MOUSEBUTTONUP:
+                        self.is_drawing = False
+                    elif event.type == pygame.MOUSEMOTION and self.is_drawing:
+                        self.handle_dev_mode_input(event.pos)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_d:
                         self.toggle_dev_mode()
