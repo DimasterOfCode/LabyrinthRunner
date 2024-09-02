@@ -12,10 +12,11 @@ WIDTH, HEIGHT = 800, 680
 CELL_SIZE = 20
 MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
-ENEMY_SPEED = CELL_SIZE // 7
+ENEMY_SPEED = CELL_SIZE // 6
 PLAYER_SPEED = CELL_SIZE // 4
 ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)  # New constant for number of escape routes
 DEV_MODE = True  # New constant for dev mode
+ENEMY_CHASE_DELAY =  0.5 # New constant for enemy chase delay
 
 # Colors
 WHITE = (255, 255, 255)
@@ -25,6 +26,7 @@ LIGHT_GREEN = (144, 238, 144)
 YELLOW = (200, 200, 0)
 LIGHT_BROWN = (205, 133, 63)
 RED = (255, 0, 0)
+GOLD = (255, 215, 0)  # New color for the star
 
 # Game objects
 class Player:
@@ -84,7 +86,7 @@ class Enemy:
         self.speed = speed
         self.path = []
         self.start_time = time.time()  # Add this line
-        self.chase_delay = 3  # Add this line
+        self.chase_delay = ENEMY_CHASE_DELAY  # Use the new constant here
 
     def move_along_path(self):
         if self.path:
@@ -104,6 +106,26 @@ class Enemy:
 
     def should_chase(self):  # Add this method
         return time.time() - self.start_time >= self.chase_delay
+
+class Star:
+    def __init__(self, x, y, radius):
+        self.x = x
+        self.y = y
+        self.radius = radius
+
+    def draw(self, screen, offset_x, offset_y):
+        pygame.draw.polygon(screen, GOLD, [
+            (self.x + offset_x, self.y - self.radius + offset_y),
+            (self.x + self.radius * 0.3 + offset_x, self.y + self.radius * 0.4 + offset_y),
+            (self.x + self.radius + offset_x, self.y + self.radius * 0.4 + offset_y),
+            (self.x + self.radius * 0.5 + offset_x, self.y + self.radius + offset_y),
+            (self.x + self.radius * 0.7 + offset_x, self.y + self.radius * 1.6 + offset_y),
+            (self.x + offset_x, self.y + self.radius * 1.2 + offset_y),
+            (self.x - self.radius * 0.7 + offset_x, self.y + self.radius * 1.6 + offset_y),
+            (self.x - self.radius * 0.5 + offset_x, self.y + self.radius + offset_y),
+            (self.x - self.radius + offset_x, self.y + self.radius * 0.4 + offset_y),
+            (self.x - self.radius * 0.3 + offset_x, self.y + self.radius * 0.4 + offset_y),
+        ])
 
 class Game:
     def __init__(self):
@@ -129,11 +151,13 @@ class Game:
         if self.player is None:
             raise ValueError("Failed to create player")
         self.enemy = None
+        self.star = None
         self.init_level()  # Initialize other game elements
 
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
         self.offset_y = SCORE_AREA_HEIGHT
         self.game_over = False
+        self.game_won = False
 
     def init_dev_mode(self):
         if self.dev_maze is None:
@@ -143,11 +167,13 @@ class Game:
             self.dev_maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
         self.coins = []
         self.enemy = self.create_enemy()
+        self.star = None
         self.score = 0
 
     def init_level(self):
         self.coins = self.create_coins(10)
         self.enemy = self.create_enemy()
+        self.star = self.create_star()
         self.score = 0
 
     def generate_maze(self, width, height):
@@ -218,6 +244,14 @@ class Game:
         
         return None  # If no valid position is found
 
+    def create_star(self):
+        current_maze = self.dev_maze if self.dev_mode else self.maze
+        empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
+        if empty_cells:
+            x, y = random.choice(empty_cells)
+            return Star(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2)
+        return None
+
     def find_path(self, start, goal):
         queue = deque([[start]])
         visited = set([start])
@@ -274,6 +308,12 @@ class Game:
         if not self.coins:
             self.level_complete()
 
+        if self.star:
+            star_rect = pygame.Rect(self.star.x - self.star.radius, self.star.y - self.star.radius, 
+                                    self.star.radius * 2, self.star.radius * 2)
+            if player_rect.colliderect(star_rect):
+                self.game_won = True
+
     def level_complete(self):
         self.level += 1
         self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
@@ -299,13 +339,16 @@ class Game:
             if self.dev_maze[y][x] == 'X':
                 self.dev_maze[y][x] = ' '
             elif self.dev_maze[y][x] == ' ':
-                # Cycle through: Empty -> Start -> Enemy -> Wall
+                # Cycle through: Empty -> Start -> Enemy -> Star -> Wall
                 self.dev_maze[y][x] = 'S'
                 self.remove_duplicate('S', x, y)
             elif self.dev_maze[y][x] == 'S':
                 self.dev_maze[y][x] = 'E'
                 self.remove_duplicate('E', x, y)
             elif self.dev_maze[y][x] == 'E':
+                self.dev_maze[y][x] = '*'
+                self.remove_duplicate('*', x, y)
+            elif self.dev_maze[y][x] == '*':
                 self.dev_maze[y][x] = 'X'
 
     def remove_duplicate(self, char, new_x, new_y):
@@ -356,10 +399,17 @@ class Game:
         if self.player:
             self.player.draw(self.screen, self.offset_x, self.offset_y)
 
+        if self.star:
+            self.star.draw(self.screen, self.offset_x, self.offset_y)
+
         if self.game_over:
             game_over_text = self.font.render("GAME OVER", True, RED)
             game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
             self.screen.blit(game_over_text, game_over_rect)
+        elif self.game_won:
+            game_won_text = self.font.render("YOU WIN!", True, GOLD)
+            game_won_rect = game_won_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            self.screen.blit(game_won_text, game_won_rect)
 
         score_text = self.font.render(f"Score: {self.score}", True, BLACK)
         score_rect = score_text.get_rect(midleft=(10, SCORE_AREA_HEIGHT // 2))
@@ -381,8 +431,10 @@ class Game:
                         pygame.draw.rect(self.screen, LIGHT_BROWN, rect)
                     elif cell == 'E':
                         pygame.draw.rect(self.screen, RED, rect)
+                    elif cell == '*':
+                        pygame.draw.rect(self.screen, GOLD, rect)
             
-            dev_text = self.font.render("Dev Mode: Click to toggle cells (Wall -> Empty -> Start -> Enemy), SPACE to save, D to exit, L to load", True, BLACK)
+            dev_text = self.font.render("Dev Mode: Click to toggle cells (Wall -> Empty -> Start -> Enemy -> Star), SPACE to save, D to exit, L to load", True, BLACK)
             dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_text, dev_rect)
         else:
@@ -408,6 +460,7 @@ class Game:
         self.level = maze_data["level"]
         self.score = maze_data["score"]
         self.maze = [''.join(row) for row in self.dev_maze]
+        self.star = self.create_star()
         print(f"Maze loaded from {self.maze_file}")
 
     def run(self):
@@ -440,7 +493,7 @@ class Game:
                         elif event.key == pygame.K_UP:
                             self.player.set_direction((0, -1))
 
-            if not self.game_over and not self.dev_mode:
+            if not self.game_over and not self.game_won and not self.dev_mode:
                 self.player.update()
                 self.update_enemy()
                 self.collect_coins()
