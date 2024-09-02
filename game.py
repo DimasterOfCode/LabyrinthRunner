@@ -152,6 +152,7 @@ class Game:
         self.level = 1
         self.dev_mode = False
         self.dev_maze = None
+        self.dev_selected_item = ' '  # Default to empty space
         self.maze_file = "custom_maze.json"
         
         if os.path.exists(self.maze_file):
@@ -363,21 +364,9 @@ class Game:
         x = (pos[0] - self.offset_x) // CELL_SIZE
         y = (pos[1] - self.offset_y) // CELL_SIZE
         if 0 <= x < MAZE_WIDTH and 0 <= y < MAZE_HEIGHT:
-            if self.dev_maze[y][x] == 'X':
-                self.dev_maze[y][x] = ' '
-            elif self.dev_maze[y][x] == ' ':
-                self.dev_maze[y][x] = 'S'
-                self.remove_duplicate('S', x, y)
-            elif self.dev_maze[y][x] == 'S':
-                self.dev_maze[y][x] = 'E'
-                self.remove_duplicate('E', x, y)
-            elif self.dev_maze[y][x] == 'E':
-                self.dev_maze[y][x] = '*'
-                self.remove_duplicate('*', x, y)
-            elif self.dev_maze[y][x] == '*':
-                self.dev_maze[y][x] = 'D'
-            elif self.dev_maze[y][x] == 'D':
-                self.dev_maze[y][x] = 'X'
+            if self.dev_selected_item in ['S', 'E', '*']:
+                self.remove_duplicate(self.dev_selected_item, x, y)
+            self.dev_maze[y][x] = self.dev_selected_item
 
     def remove_duplicate(self, char, new_x, new_y):
         for y, row in enumerate(self.dev_maze):
@@ -402,6 +391,10 @@ class Game:
             self.init_level()
         self.player = self.create_player()
         self.enemy = self.create_enemy()
+
+    def erase_dev_maze(self):
+        self.dev_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
+        print("Maze erased")
 
     def draw(self):
         self.screen.fill(GREEN)
@@ -468,9 +461,13 @@ class Game:
                     elif cell == 'D':
                         pygame.draw.rect(self.screen, CYAN, rect)
             
-            dev_text = self.font.render("Dev Mode: Click to toggle cells (Wall -> Empty -> Start -> Enemy -> Star -> Diamond), SPACE to save, D to exit, L to load", True, BLACK)
+            dev_text = self.font.render("Dev Mode: P-Player, N-Enemy, S-Star, M-Diamond, W-Wall, C-Clear, SPACE to save, L to load, ESC to exit", True, BLACK)
             dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_text, dev_rect)
+
+            selected_text = self.font.render(f"Selected: {self.dev_selected_item if self.dev_selected_item != ' ' else 'Empty'}", True, BLACK)
+            selected_rect = selected_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 40))
+            self.screen.blit(selected_text, selected_rect)
         else:
             dev_hint = self.font.render("Press D for Dev Mode, L to Load Maze", True, BLACK)
             dev_hint_rect = dev_hint.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
@@ -513,8 +510,23 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_d:
                         self.toggle_dev_mode()
-                    elif self.dev_mode and event.key == pygame.K_SPACE:
-                        self.save_dev_maze()
+                    elif self.dev_mode:
+                        if event.key == pygame.K_SPACE:
+                            self.save_dev_maze()
+                        elif event.key == pygame.K_e:
+                            self.erase_dev_maze()
+                        elif event.key == pygame.K_p:
+                            self.dev_selected_item = 'S'  # Start/Player
+                        elif event.key == pygame.K_n:
+                            self.dev_selected_item = 'E'  # Enemy
+                        elif event.key == pygame.K_s:
+                            self.dev_selected_item = '*'  # Star
+                        elif event.key == pygame.K_m:
+                            self.dev_selected_item = 'D'  # Diamond
+                        elif event.key == pygame.K_w:
+                            self.dev_selected_item = 'X'  # Wall
+                        elif event.key == pygame.K_c:
+                            self.dev_selected_item = ' '  # Clear/Empty
                     elif event.key == pygame.K_l:
                         self.load_maze_from_file()
                     elif self.game_over:
@@ -532,6 +544,8 @@ class Game:
                             self.player.set_direction((0, 1))
                         elif event.key == pygame.K_UP:
                             self.player.set_direction((0, -1))
+                if event.type == pygame.KEYUP and self.dev_mode:
+                    self.dev_selected_item = ' '  # Reset to empty space when key is released
 
             if not self.game_over and not self.dev_mode and not self.level_complete:
                 self.player.update()
