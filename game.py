@@ -2,7 +2,7 @@ import pygame
 import sys
 import random
 from collections import deque
-import time  # Add this import
+import time
 import json
 import os
 
@@ -14,9 +14,10 @@ MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
 ENEMY_SPEED = CELL_SIZE // 6
 PLAYER_SPEED = CELL_SIZE // 4
-ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)  # New constant for number of escape routes
-DEV_MODE = True  # New constant for dev mode
-ENEMY_CHASE_DELAY =  0.5 # New constant for enemy chase delay
+ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)
+DEV_MODE = True
+ENEMY_CHASE_DELAY = 0.5
+COIN_RADIUS = CELL_SIZE // 5  # New constant for coin radius
 
 # Colors
 WHITE = (255, 255, 255)
@@ -26,12 +27,12 @@ LIGHT_GREEN = (144, 238, 144)
 YELLOW = (200, 200, 0)
 LIGHT_BROWN = (205, 133, 63)
 RED = (255, 0, 0)
-GOLD = (255, 215, 0)  # New color for the star
+GOLD = (255, 215, 0)
 
 # Game objects
 class Player:
     def __init__(self, game, x, y, radius, speed):
-        self.game = game  # Add this line
+        self.game = game
         self.x = x
         self.y = y
         self.radius = radius
@@ -44,14 +45,11 @@ class Player:
 
     def draw(self, screen, offset_x, offset_y):
         pygame.draw.circle(screen, LIGHT_BROWN, (int(self.x + offset_x), int(self.y + offset_y)), self.radius)
-        # Draw eyes
         eye_radius = max(2, self.radius // 5)
         eye_offset = self.radius // 3
         pygame.draw.circle(screen, BLACK, (int(self.x - eye_offset + offset_x), int(self.y - eye_offset + offset_y)), eye_radius)
         pygame.draw.circle(screen, BLACK, (int(self.x + eye_offset + offset_x), int(self.y - eye_offset + offset_y)), eye_radius)
-        # Draw smile
-        smile_rect = (int(self.x - self.radius // 2 + offset_x), int(self.y + offset_y), 
-                      self.radius, self.radius // 2)
+        smile_rect = (int(self.x - self.radius // 2 + offset_x), int(self.y + offset_y), self.radius, self.radius // 2)
         pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius // 5))
 
     def set_direction(self, direction):
@@ -69,10 +67,10 @@ class Player:
                 self.direction = None
 
 class Coin:
-    def __init__(self, x, y, radius):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.radius = radius
+        self.radius = COIN_RADIUS
 
     def draw(self, screen, offset_x, offset_y):
         pygame.draw.circle(screen, YELLOW, (self.x + offset_x, self.y + offset_y), self.radius)
@@ -85,8 +83,8 @@ class Enemy:
         self.radius = radius
         self.speed = speed
         self.path = []
-        self.start_time = time.time()  # Add this line
-        self.chase_delay = ENEMY_CHASE_DELAY  # Use the new constant here
+        self.start_time = time.time()
+        self.chase_delay = ENEMY_CHASE_DELAY
 
     def move_along_path(self):
         if self.path:
@@ -104,7 +102,7 @@ class Enemy:
     def draw(self, screen, offset_x, offset_y):
         pygame.draw.circle(screen, RED, (int(self.x + offset_x), int(self.y + offset_y)), self.radius)
 
-    def should_chase(self):  # Add this method
+    def should_chase(self):
         return time.time() - self.start_time >= self.chase_delay
 
 class Star:
@@ -140,11 +138,9 @@ class Game:
         self.dev_maze = None
         self.maze_file = "custom_maze.json"
         
-        # Try to load the maze from file
         if os.path.exists(self.maze_file):
             self.load_maze_from_file()
         else:
-            # If no file exists, generate a random maze
             self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
         
         self.player = self.create_player()
@@ -152,7 +148,7 @@ class Game:
             raise ValueError("Failed to create player")
         self.enemy = None
         self.star = None
-        self.init_level()  # Initialize other game elements
+        self.init_level()
 
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
         self.offset_y = SCORE_AREA_HEIGHT
@@ -162,7 +158,6 @@ class Game:
     def init_dev_mode(self):
         if self.dev_maze is None:
             self.dev_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
-            # Add default start positions
             self.dev_maze[1][1] = 'S'
             self.dev_maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
         self.coins = []
@@ -171,13 +166,12 @@ class Game:
         self.score = 0
 
     def init_level(self):
-        self.coins = self.create_coins(10)
+        self.coins = self.create_coins(0)
         self.enemy = self.create_enemy()
         self.star = self.create_star()
         self.score = 0
 
     def generate_maze(self, width, height):
-        # Initialize the maze with walls
         maze = [['X' for _ in range(width)] for _ in range(height)]
         
         def carve_path(x, y):
@@ -191,9 +185,8 @@ class Game:
                     return nx, ny
             return None
 
-        # Start carving from a random point
         x, y = random.randrange(1, width-1), random.randrange(1, height-1)
-        maze[y][x] = 'S'  # Set start point
+        maze[y][x] = 'S'
         
         while True:
             next_pos = carve_path(x, y)
@@ -210,23 +203,20 @@ class Game:
                 x = row.index('S')
                 return Player(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, PLAYER_SPEED)
         
-        # If 'S' is not found, place the player at a random empty cell
         empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
             return Player(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, PLAYER_SPEED)
         
-        # If there are no empty cells, raise an exception
         raise ValueError("No valid position found for the player")
 
     def create_coins(self, num_coins):
         coins = []
-        empty_cells = [(x, y) for y, row in enumerate(self.maze) for x, cell in enumerate(row) if cell == ' ']
-        for _ in range(num_coins):
-            if empty_cells:
-                x, y = random.choice(empty_cells)
-                coins.append(Coin(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 3))
-                empty_cells.remove((x, y))
+        current_maze = self.dev_maze if self.dev_mode else self.maze
+        for y, row in enumerate(current_maze):
+            for x, cell in enumerate(row):
+                if cell == ' ':
+                    coins.append(Coin(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2))
         return coins
 
     def create_enemy(self):
@@ -236,13 +226,12 @@ class Game:
                 x = row.index('E')
                 return Enemy(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, ENEMY_SPEED)
         
-        # If 'E' is not found, place the enemy at a random empty cell
         empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
             return Enemy(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, ENEMY_SPEED)
         
-        return None  # If no valid position is found
+        return None
 
     def create_star(self):
         current_maze = self.dev_maze if self.dev_mode else self.maze
@@ -251,7 +240,6 @@ class Game:
                 x = row.index('*')
                 return Star(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2)
         
-        # If '*' is not found, place the star at a random empty cell
         empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
@@ -280,7 +268,7 @@ class Game:
 
     def update_enemy(self):
         if self.enemy:
-            if self.enemy.should_chase():  # Add this condition
+            if self.enemy.should_chase():
                 if not self.enemy.path:
                     start = (int(self.enemy.x // CELL_SIZE), int(self.enemy.y // CELL_SIZE))
                     goal = (int(self.player.x // CELL_SIZE), int(self.player.y // CELL_SIZE))
@@ -316,7 +304,7 @@ class Game:
                                     self.star.radius * 2, self.star.radius * 2)
             if player_rect.colliderect(star_rect):
                 self.level_complete = True
-                self.star = None  # Remove the star after collection
+                self.star = None
 
     def next_level(self):
         self.level += 1
@@ -325,7 +313,6 @@ class Game:
         self.init_level()
         self.level_complete = False
         
-        # Reset enemy start time for the new level
         if self.enemy:
             self.enemy.start_time = time.time()
 
@@ -344,7 +331,6 @@ class Game:
             if self.dev_maze[y][x] == 'X':
                 self.dev_maze[y][x] = ' '
             elif self.dev_maze[y][x] == ' ':
-                # Cycle through: Empty -> Start -> Enemy -> Star -> Wall
                 self.dev_maze[y][x] = 'S'
                 self.remove_duplicate('S', x, y)
             elif self.dev_maze[y][x] == 'S':
@@ -395,7 +381,7 @@ class Game:
 
         if self.enemy:
             self.enemy.draw(self.screen, self.offset_x, self.offset_y)
-            if not self.enemy.should_chase():  # Add this condition
+            if not self.enemy.should_chase():
                 countdown = int(self.enemy.chase_delay - (time.time() - self.enemy.start_time))
                 countdown_text = self.font.render(f"Chase starts in: {countdown}", True, RED)
                 countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
@@ -444,7 +430,6 @@ class Game:
             dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_text, dev_rect)
         else:
-            # Add instructions for entering dev mode and loading maze
             dev_hint = self.font.render("Press D for Dev Mode, L to Load Maze", True, BLACK)
             dev_hint_rect = dev_hint.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_hint, dev_hint_rect)
@@ -469,7 +454,7 @@ class Game:
         self.player = self.create_player()
         self.enemy = self.create_enemy()
         self.star = self.create_star()
-        self.coins = self.create_coins(10)  # Recreate coins
+        self.coins = self.create_coins(0)
         print(f"Maze loaded from {self.maze_file}")
 
     def run(self):
