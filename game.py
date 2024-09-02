@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 from collections import deque
+import time  # Add this import
 
 # Constants
 FPS = 60
@@ -12,6 +13,7 @@ SCORE_AREA_HEIGHT = 40
 ENEMY_SPEED = CELL_SIZE // 20
 PLAYER_SPEED = CELL_SIZE // 1
 ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)  # New constant for number of escape routes
+DEV_MODE = True  # New constant for dev mode
 
 # Colors
 WHITE = (255, 255, 255)
@@ -49,7 +51,8 @@ class Player:
         pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius // 5))
 
     def set_direction(self, direction):
-        self.direction = direction
+        if self.direction is None:
+            self.direction = direction
 
     def update(self):
         if self.direction:
@@ -103,23 +106,28 @@ class Game:
         self.font = pygame.font.Font(None, 36)
         
         self.level = 1
-        self.player = None
-        try:
-            self.init_level()
-        except ValueError as e:
-            print(f"Error initializing level: {e}")
-            pygame.quit()
-            sys.exit(1)
+        self.dev_mode = False
+        self.dev_maze = None
+        self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+        self.player = self.create_player()
+        if self.player is None:
+            raise ValueError("Failed to create player")
+        self.init_level()  # Initialize other game elements
 
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
         self.offset_y = SCORE_AREA_HEIGHT
         self.game_over = False
 
+    def init_dev_mode(self):
+        if self.dev_maze is None:
+            self.dev_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
+            # Add a default start position
+            self.dev_maze[1][1] = 'S'
+        self.coins = []
+        self.enemy = None
+        self.score = 0
+
     def init_level(self):
-        self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
-        self.player = self.create_player()
-        if self.player is None:
-            raise ValueError("Failed to create player")
         self.coins = self.create_coins(10)
         self.enemy = self.create_enemy()
         self.score = 0
@@ -152,14 +160,14 @@ class Game:
         return [''.join(row) for row in maze]
 
     def create_player(self):
-        for y, row in enumerate(self.maze):
+        current_maze = self.dev_maze if self.dev_mode else self.maze
+        for y, row in enumerate(current_maze):
             if 'S' in row:
-                x = row.index('S') * CELL_SIZE + CELL_SIZE // 2
-                y = y * CELL_SIZE + CELL_SIZE // 2
-                return Player(self, x, y, CELL_SIZE // 2 - 1, PLAYER_SPEED)
+                x = row.index('S')
+                return Player(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, PLAYER_SPEED)
         
         # If 'S' is not found, place the player at a random empty cell
-        empty_cells = [(x, y) for y, row in enumerate(self.maze) for x, cell in enumerate(row) if cell == ' ']
+        empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
             return Player(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, PLAYER_SPEED)
@@ -251,6 +259,36 @@ class Game:
         if player_rect.colliderect(enemy_rect):
             self.game_over = True
 
+    def handle_dev_mode_input(self, pos):
+        x = (pos[0] - self.offset_x) // CELL_SIZE
+        y = (pos[1] - self.offset_y) // CELL_SIZE
+        if 0 <= x < MAZE_WIDTH and 0 <= y < MAZE_HEIGHT:
+            if self.dev_maze[y][x] == 'X':
+                self.dev_maze[y][x] = ' '
+            elif self.dev_maze[y][x] == ' ':
+                # Remove the old start position if it exists
+                for row in self.dev_maze:
+                    if 'S' in row:
+                        row[row.index('S')] = ' '
+                self.dev_maze[y][x] = 'S'
+            elif self.dev_maze[y][x] == 'S':
+                self.dev_maze[y][x] = 'X'
+
+    def save_dev_maze(self):
+        self.maze = [''.join(row) for row in self.dev_maze]
+        self.dev_mode = False
+        self.player = self.create_player()
+        self.init_level()
+
+    def toggle_dev_mode(self):
+        self.dev_mode = not self.dev_mode
+        if self.dev_mode:
+            self.init_dev_mode()
+        else:
+            self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+            self.init_level()
+        self.player = self.create_player()
+
     def draw(self):
         self.screen.fill(GREEN)
         pygame.draw.rect(self.screen, LIGHT_GREEN, (0, 0, WIDTH, SCORE_AREA_HEIGHT))
@@ -267,7 +305,8 @@ class Game:
         if self.enemy:
             self.enemy.draw(self.screen, self.offset_x, self.offset_y)
 
-        self.player.draw(self.screen, self.offset_x, self.offset_y)
+        if self.player:
+            self.player.draw(self.screen, self.offset_x, self.offset_y)
 
         if self.game_over:
             game_over_text = self.font.render("GAME OVER", True, RED)
@@ -282,6 +321,26 @@ class Game:
         level_rect = level_text.get_rect(midright=(WIDTH - 10, SCORE_AREA_HEIGHT // 2))
         self.screen.blit(level_text, level_rect)
 
+        if self.dev_mode:
+            for y, row in enumerate(self.dev_maze):
+                for x, cell in enumerate(row):
+                    rect = pygame.Rect(x * CELL_SIZE + self.offset_x, y * CELL_SIZE + self.offset_y, CELL_SIZE, CELL_SIZE)
+                    if cell == 'X':
+                        pygame.draw.rect(self.screen, BLACK, rect)
+                    elif cell == ' ':
+                        pygame.draw.rect(self.screen, WHITE, rect)
+                    elif cell == 'S':
+                        pygame.draw.rect(self.screen, LIGHT_BROWN, rect)
+            
+            dev_text = self.font.render("Dev Mode: Click to toggle cells, SPACE to save, D to exit", True, BLACK)
+            dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
+            self.screen.blit(dev_text, dev_rect)
+        else:
+            # Add instructions for entering dev mode
+            dev_hint = self.font.render("Press D for Dev Mode", True, BLACK)
+            dev_hint_rect = dev_hint.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
+            self.screen.blit(dev_hint, dev_hint_rect)
+
     def run(self):
         running = True
         while running:
@@ -290,8 +349,14 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                if event.type == pygame.MOUSEBUTTONDOWN and self.dev_mode:
+                    self.handle_dev_mode_input(event.pos)
                 if event.type == pygame.KEYDOWN:
-                    if self.game_over:
+                    if event.key == pygame.K_d:
+                        self.toggle_dev_mode()
+                    elif self.dev_mode and event.key == pygame.K_SPACE:
+                        self.save_dev_maze()
+                    elif self.game_over:
                         if event.key == pygame.K_SPACE:
                             self.__init__()
                     else:
@@ -304,7 +369,7 @@ class Game:
                         elif event.key == pygame.K_UP:
                             self.player.set_direction((0, -1))
 
-            if not self.game_over:
+            if not self.game_over and not self.dev_mode:
                 self.player.update()
                 self.update_enemy()
                 self.collect_coins()
