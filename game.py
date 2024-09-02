@@ -30,14 +30,31 @@ RED = (255, 0, 0)
 GOLD = (255, 215, 0)
 CYAN = (0, 255, 255)  # New color for diamonds
 
-# Game objects
-class Player:
-    def __init__(self, game, x, y, radius, speed):
-        self.game = game
+# New base classes without ABC
+class GameObject:
+    def __init__(self, x, y, radius):
         self.x = x
         self.y = y
         self.radius = radius
+
+    def draw(self, screen, offset_x, offset_y):
+        raise NotImplementedError("Subclass must implement abstract method")
+
+class MovableObject(GameObject):
+    def __init__(self, x, y, radius, speed):
+        super().__init__(x, y, radius)
         self.speed = speed
+
+    def move(self, dx, dy):
+        self.x += dx * self.speed
+        self.y += dy * self.speed
+
+# Refactored game objects
+class Player(MovableObject):
+    SYMBOL = 'S'
+    def __init__(self, game, x, y, radius, speed):
+        super().__init__(x, y, radius, speed)
+        self.game = game
         self.direction = None
 
     def move(self, dx, dy):
@@ -67,7 +84,7 @@ class Player:
             else:
                 self.direction = None
 
-class Coin:
+class Coin(GameObject):
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -76,13 +93,11 @@ class Coin:
     def draw(self, screen, offset_x, offset_y):
         pygame.draw.circle(screen, YELLOW, (self.x + offset_x, self.y + offset_y), self.radius)
 
-class Enemy:
+class Enemy(MovableObject):
+    SYMBOL = 'E'
     def __init__(self, game, x, y, radius, speed):
+        super().__init__(x, y, radius, speed)
         self.game = game
-        self.x = x
-        self.y = y
-        self.radius = radius
-        self.speed = speed
         self.path = []
         self.start_time = time.time()
         self.chase_delay = ENEMY_CHASE_DELAY
@@ -106,7 +121,8 @@ class Enemy:
     def should_chase(self):
         return time.time() - self.start_time >= self.chase_delay
 
-class Star:
+class Star(GameObject):
+    SYMBOL = '*'
     def __init__(self, x, y, radius):
         self.x = x
         self.y = y
@@ -126,7 +142,8 @@ class Star:
             (self.x - self.radius * 0.3 + offset_x, self.y + self.radius * 0.4 + offset_y),
         ])
 
-class Diamond:
+class Diamond(GameObject):
+    SYMBOL = 'D'
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -141,58 +158,10 @@ class Diamond:
         ]
         pygame.draw.polygon(screen, CYAN, points)
 
-class Game:
-    def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Circle Maze Game")
-        self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font(None, 36)
-        
-        self.level = 1
-        self.dev_mode = False
-        self.dev_maze = None
-        self.dev_selected_item = ' '  # Default to empty space
-        self.maze_file = "custom_maze.json"
-        
-        if os.path.exists(self.maze_file):
-            self.load_maze_from_file()
-        else:
-            self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
-        
-        self.player = self.create_player()
-        if self.player is None:
-            raise ValueError("Failed to create player")
-        self.enemy = None
-        self.star = None
-        self.diamonds = []
-        self.init_level()
-
-        self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
-        self.offset_y = SCORE_AREA_HEIGHT
-        self.game_over = False
-        self.level_complete = False
-        self.is_drawing = False  # New attribute to track if we're currently drawing
-
-    def init_dev_mode(self):
-        if self.dev_maze is None:
-            self.dev_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
-            self.dev_maze[1][1] = 'S'
-            self.dev_maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
-        self.coins = []
-        self.enemy = self.create_enemy()
-        self.star = None
-        self.diamonds = []
-        self.score = 0
-
-    def init_level(self):
-        self.coins = self.create_coins(0)
-        self.enemy = self.create_enemy()
-        self.star = self.create_star()
-        self.diamonds = self.create_diamonds()
-        self.score = 0
-
-    def generate_maze(self, width, height):
+# New MazeGenerator class
+class MazeGenerator:
+    @staticmethod
+    def generate_maze(width, height):
         maze = [['X' for _ in range(width)] for _ in range(height)]
         
         def carve_path(x, y):
@@ -217,19 +186,78 @@ class Game:
         
         return [''.join(row) for row in maze]
 
-    def create_player(self):
+# Refactored Game class
+class Game:
+    def __init__(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        pygame.display.set_caption("Circle Maze Game")
+        self.clock = pygame.time.Clock()
+        self.font = pygame.font.Font(None, 36)
+        
+        self.level = 1
+        self.dev_mode = False
+        self.dev_maze = None
+        self.dev_selected_item = ' '  # Default to empty space
+        self.maze_file = "custom_maze.json"
+        
+        self.maze_generator = MazeGenerator()
+        self.load_or_generate_maze()
+
+        self.player = self.create_player()
+        if self.player is None:
+            raise ValueError("Failed to create player")
+        self.enemy = None
+        self.star = None
+        self.diamonds = []
+        self.init_level()
+
+        self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
+        self.offset_y = SCORE_AREA_HEIGHT
+        self.game_over = False
+        self.level_complete = False
+        self.is_drawing = False  # New attribute to track if we're currently drawing
+
+    def load_or_generate_maze(self):
+        if os.path.exists(self.maze_file):
+            self.load_maze_from_file()
+        else:
+            self.maze = self.maze_generator.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+
+    def init_dev_mode(self):
+        if self.dev_maze is None:
+            self.dev_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
+            self.dev_maze[1][1] = 'S'
+            self.dev_maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
+        self.coins = []
+        self.enemy = self.create_enemy()
+        self.star = None
+        self.diamonds = []
+        self.score = 0
+
+    def init_level(self):
+        self.coins = self.create_coins(0)
+        self.enemy = self.create_enemy()
+        self.star = self.create_star()
+        self.diamonds = self.create_diamonds()
+        self.score = 0
+
+    def create_game_object(self, object_class, *args):
         current_maze = self.dev_maze if self.dev_mode else self.maze
         for y, row in enumerate(current_maze):
-            if 'S' in row:
-                x = row.index('S')
-                return Player(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, PLAYER_SPEED)
+            for x, cell in enumerate(row):
+                if cell == object_class.SYMBOL:
+                    return object_class(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
         
         empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
-            return Player(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, PLAYER_SPEED)
+            return object_class(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
         
-        raise ValueError("No valid position found for the player")
+        return None
+
+    def create_player(self):
+        return self.create_game_object(Player, CELL_SIZE // 2 - 1, PLAYER_SPEED)
 
     def create_coins(self, num_coins):
         coins = []
@@ -241,31 +269,10 @@ class Game:
         return coins
 
     def create_enemy(self):
-        current_maze = self.dev_maze if self.dev_mode else self.maze
-        for y, row in enumerate(current_maze):
-            if 'E' in row:
-                x = row.index('E')
-                return Enemy(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, ENEMY_SPEED)
-        
-        empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
-        if empty_cells:
-            x, y = random.choice(empty_cells)
-            return Enemy(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2 - 1, ENEMY_SPEED)
-        
-        return None
+        return self.create_game_object(Enemy, CELL_SIZE // 2 - 1, ENEMY_SPEED)
 
     def create_star(self):
-        current_maze = self.dev_maze if self.dev_mode else self.maze
-        for y, row in enumerate(current_maze):
-            if '*' in row:
-                x = row.index('*')
-                return Star(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2)
-        
-        empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
-        if empty_cells:
-            x, y = random.choice(empty_cells)
-            return Star(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, CELL_SIZE // 2)
-        return None
+        return self.create_game_object(Star, CELL_SIZE // 2)
 
     def create_diamonds(self):
         diamonds = []
@@ -345,7 +352,7 @@ class Game:
 
     def next_level(self):
         self.level += 1
-        self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+        self.maze = self.maze_generator.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
         self.player = self.create_player()
         self.init_level()
         self.level_complete = False
@@ -388,7 +395,7 @@ class Game:
         if self.dev_mode:
             self.init_dev_mode()
         else:
-            self.maze = self.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+            self.maze = self.maze_generator.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
             self.init_level()
         self.player = self.create_player()
         self.enemy = self.create_enemy()
