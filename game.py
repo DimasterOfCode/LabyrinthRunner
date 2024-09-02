@@ -124,9 +124,7 @@ class Enemy(MovableObject):
 class Star(GameObject):
     SYMBOL = '*'
     def __init__(self, x, y, radius):
-        self.x = x
-        self.y = y
-        self.radius = radius
+        super().__init__(x, y, radius)
 
     def draw(self, screen, offset_x, offset_y):
         pygame.draw.polygon(screen, GOLD, [
@@ -247,12 +245,18 @@ class Game:
         for y, row in enumerate(current_maze):
             for x, cell in enumerate(row):
                 if cell == object_class.SYMBOL:
-                    return object_class(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+                    if object_class in [Player, Enemy]:
+                        return object_class(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+                    else:
+                        return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
         
         empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
-            return object_class(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+            if object_class in [Player, Enemy]:
+                return object_class(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+            else:
+                return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
         
         return None
 
