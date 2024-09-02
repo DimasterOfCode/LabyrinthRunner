@@ -4,13 +4,14 @@ import random
 from collections import deque
 
 # Constants
+FPS = 60
 WIDTH, HEIGHT = 800, 680
 CELL_SIZE = 20
 MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
 ENEMY_SPEED = CELL_SIZE // 20
-PLAYER_SPEED = CELL_SIZE // 10
-ESCAPE_ROUTES = max(1000, MAZE_WIDTH // 10)  # New constant for number of escape routes
+PLAYER_SPEED = CELL_SIZE // 1
+ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)  # New constant for number of escape routes
 
 # Colors
 WHITE = (255, 255, 255)
@@ -23,11 +24,13 @@ RED = (255, 0, 0)
 
 # Game objects
 class Player:
-    def __init__(self, x, y, radius, speed):
+    def __init__(self, game, x, y, radius, speed):
+        self.game = game  # Add this line
         self.x = x
         self.y = y
         self.radius = radius
         self.speed = speed
+        self.direction = None
 
     def move(self, dx, dy):
         self.x += dx * self.speed
@@ -44,6 +47,19 @@ class Player:
         smile_rect = (int(self.x - self.radius // 2 + offset_x), int(self.y + offset_y), 
                       self.radius, self.radius // 2)
         pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius // 5))
+
+    def set_direction(self, direction):
+        self.direction = direction
+
+    def update(self):
+        if self.direction:
+            dx, dy = self.direction
+            new_x = self.x + dx * self.speed
+            new_y = self.y + dy * self.speed
+            if not self.game.check_collision(new_x, new_y):
+                self.move(dx, dy)
+            else:
+                self.direction = None
 
 class Coin:
     def __init__(self, x, y, radius):
@@ -144,7 +160,7 @@ class Game:
             if 'S' in row:
                 x = row.index('S') * CELL_SIZE + CELL_SIZE // 2
                 y = y * CELL_SIZE + CELL_SIZE // 2
-                return Player(x, y, CELL_SIZE // 2 - 1, PLAYER_SPEED)
+                return Player(self, x, y, CELL_SIZE // 2 - 1, PLAYER_SPEED)  # Pass 'self' here
 
     def create_coins(self, num_coins):
         coins = []
@@ -262,29 +278,27 @@ class Game:
     def run(self):
         running = True
         while running:
-            self.clock.tick(60)
+            self.clock.tick(FPS)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                if event.type == pygame.KEYDOWN and self.game_over:
-                    if event.key == pygame.K_SPACE:
-                        self.__init__()
+                if event.type == pygame.KEYDOWN:
+                    if self.game_over:
+                        if event.key == pygame.K_SPACE:
+                            self.__init__()
+                    else:
+                        if event.key == pygame.K_RIGHT:
+                            self.player.set_direction((1, 0))
+                        elif event.key == pygame.K_LEFT:
+                            self.player.set_direction((-1, 0))
+                        elif event.key == pygame.K_DOWN:
+                            self.player.set_direction((0, 1))
+                        elif event.key == pygame.K_UP:
+                            self.player.set_direction((0, -1))
 
             if not self.game_over:
-                keys = pygame.key.get_pressed()
-                dx = keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]
-                dy = keys[pygame.K_DOWN] - keys[pygame.K_UP]
-
-                new_x = self.player.x + dx * self.player.speed
-                new_y = self.player.y + dy * self.player.speed
-
-                if not self.check_collision(new_x, new_y):
-                    self.player.move(dx, dy)
-
-                self.player.x = max(self.player.radius, min(WIDTH - self.player.radius, self.player.x))
-                self.player.y = max(self.player.radius, min(HEIGHT - self.player.radius, self.player.y))
-
+                self.player.update()
                 self.update_enemy()
                 self.collect_coins()
                 self.check_enemy_collision()
