@@ -271,7 +271,7 @@ class GameRenderer:
         dev_rect = dev_text.get_rect(midtop=(WIDTH // 2, 10))
         self.game.screen.blit(dev_text, dev_rect)
 
-        if self.game.show_help:
+        if self.game.level_editor.show_help:
             self.draw_help_overlay()
 
         quit_text = self.font.render("Press ESC to return to menu", True, BLACK)
@@ -408,8 +408,6 @@ class Game:
         
         self.level_manager = LevelManager("levels.json")
         self.level_editor = LevelEditor(self)
-        self.show_help = False
-        self.is_drawing = False
 
         self.load_or_generate_levels()
         self.init_game_objects()
@@ -533,8 +531,6 @@ class Game:
         self.state = "menu"
         self.game_over = False
         self.level_complete = False
-        self.show_help = False
-        self.is_drawing = False
         # Reset the game objects
         self.init_game_objects()
         # Save levels when returning to menu
@@ -649,6 +645,7 @@ class LevelEditor:
         self.game = game
         self.selected_item = ' '
         self.is_drawing = False
+        self.show_help = False  # Add this line
 
     def init_level_editor(self):
         if not self.game.level_manager.levels:
@@ -664,6 +661,8 @@ class LevelEditor:
             if event.key == pygame.K_ESCAPE:
                 print("ESC key pressed in Level Editor")  # Debug print
                 self.game.return_to_menu()
+            elif event.key == pygame.K_h:
+                self.show_help = not self.show_help  # Update this line
             else:
                 self.handle_keydown(event)
         elif event.type == pygame.KEYUP:
@@ -676,9 +675,7 @@ class LevelEditor:
             self.handle_mousemotion(event)
 
     def handle_keydown(self, event):
-        if event.key == pygame.K_h:
-            self.game.show_help = not self.game.show_help
-        elif event.key == pygame.K_SPACE:
+        if event.key == pygame.K_SPACE:
             self.save_current_level()
         elif event.key == pygame.K_e:
             self.erase_maze()
