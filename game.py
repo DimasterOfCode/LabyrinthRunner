@@ -6,6 +6,7 @@ import time
 import json
 import os
 import pygame.gfxdraw
+import heapq
 
 # Constants
 FPS = 60
@@ -46,10 +47,19 @@ class MovableObject(GameObject):
     def __init__(self, x, y, radius, speed):
         super().__init__(x, y, radius)
         self.speed = speed
+        self.dx = 0
+        self.dy = 0
 
     def move(self, dx, dy):
-        self.x += dx * self.speed
-        self.y += dy * self.speed
+        self.dx = dx * self.speed
+        self.dy = dy * self.speed
+        self.x += self.dx
+        self.y += self.dy
+
+    def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
+        x = interpolated_x if interpolated_x is not None else self.x
+        y = interpolated_y if interpolated_y is not None else self.y
+        pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
 
 # Refactored game objects
 class MazeUtils:
@@ -67,24 +77,59 @@ class MazeUtils:
 
     @staticmethod
     def find_path(maze, start, goal):
-        queue = deque([[start]])
-        visited = set([start])
-        
-        while queue:
-            path = queue.popleft()
-            x, y = path[-1]
-            
-            if (x, y) == goal:
-                return path
-            
-            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-                next_x, next_y = x + dx, y + dy
-                if (0 <= next_x < MAZE_WIDTH and 0 <= next_y < MAZE_HEIGHT and
-                    maze[next_y][next_x] != 'X' and (next_x, next_y) not in visited):
-                    queue.append(path + [(next_x, next_y)])
-                    visited.add((next_x, next_y))
-        
-        return None
+        astar = AStar(maze)
+        path = astar.find_path(start, goal)
+        return path
+
+class AStar:
+    def __init__(self, maze):
+        self.maze = maze
+        self.width = len(maze[0])
+        self.height = len(maze)
+
+    def heuristic(self, a, b):
+        return abs(b[0] - a[0]) + abs(b[1] - a[1])
+
+    def get_neighbors(self, node):
+        x, y = node
+        neighbors = []
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:  # 4-directional movement
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < self.width and 0 <= ny < self.height and self.maze[ny][nx] != 'X':
+                neighbors.append((nx, ny))
+        return neighbors
+
+    def find_path(self, start, goal):
+        frontier = []
+        heapq.heappush(frontier, (0, start))
+        came_from = {start: None}
+        cost_so_far = {start: 0}
+
+        while frontier:
+            current = heapq.heappop(frontier)[1]
+
+            if current == goal:
+                break
+
+            for next in self.get_neighbors(current):
+                new_cost = cost_so_far[current] + 1
+                if next not in cost_so_far or new_cost < cost_so_far[next]:
+                    cost_so_far[next] = new_cost
+                    priority = new_cost + self.heuristic(goal, next)
+                    heapq.heappush(frontier, (priority, next))
+                    came_from[next] = current
+
+        if goal not in came_from:
+            return None
+
+        path = []
+        current = goal
+        while current != start:
+            path.append(current)
+            current = came_from[current]
+        path.append(start)
+        path.reverse()
+        return path
 
 class Player(MovableObject):
     SYMBOL = 'S'
@@ -92,18 +137,21 @@ class Player(MovableObject):
         super().__init__(x, y, radius, speed)
         self.collision_checker = collision_checker
         self.direction = None
+        self.color = LIGHT_BROWN  # Add this line to define the color
 
     def move(self, dx, dy):
         self.x += dx * self.speed
         self.y += dy * self.speed
 
-    def draw(self, screen, offset_x, offset_y):
-        pygame.draw.circle(screen, LIGHT_BROWN, (int(self.x + offset_x), int(self.y + offset_y)), self.radius)
+    def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
+        x = interpolated_x if interpolated_x is not None else self.x
+        y = interpolated_y if interpolated_y is not None else self.y
+        pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
         eye_radius = max(2, self.radius // 5)
         eye_offset = self.radius // 3
-        pygame.draw.circle(screen, BLACK, (int(self.x - eye_offset + offset_x), int(self.y - eye_offset + offset_y)), eye_radius)
-        pygame.draw.circle(screen, BLACK, (int(self.x + eye_offset + offset_x), int(self.y - eye_offset + offset_y)), eye_radius)
-        smile_rect = (int(self.x - self.radius // 2 + offset_x), int(self.y + offset_y), self.radius, self.radius // 2)
+        pygame.draw.circle(screen, BLACK, (int(x - eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
+        pygame.draw.circle(screen, BLACK, (int(x + eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
+        smile_rect = (int(x - self.radius // 2 + offset_x), int(y + offset_y), self.radius, self.radius // 2)
         pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius // 5))
 
     def set_direction(self, direction):
@@ -137,22 +185,39 @@ class Enemy(MovableObject):
         self.path = []
         self.start_time = time.time()
         self.chase_delay = ENEMY_CHASE_DELAY
+        self.color = RED
+        self.target = None
 
-    def move_along_path(self):
-        if self.path:
-            target_x, target_y = self.path[0]
-            dx = target_x - self.x
-            dy = target_y - self.y
-            distance = ((dx ** 2) + (dy ** 2)) ** 0.5
-            
-            if distance < self.speed:
-                self.x, self.y = self.path.pop(0)
-            else:
-                self.x += (dx / distance) * self.speed
-                self.y += (dy / distance) * self.speed
+    def update(self, player_pos):
+        if self.should_chase():
+            if not self.path or self.target != player_pos:
+                self.target = player_pos
+                start = (int(self.x // CELL_SIZE), int(self.y // CELL_SIZE))
+                goal = (int(player_pos[0] // CELL_SIZE), int(player_pos[1] // CELL_SIZE))
+                self.path = self.path_finder(start, goal)
+                if self.path:
+                    self.path.pop(0)  # Remove the starting position
 
-    def draw(self, screen, offset_x, offset_y):
-        pygame.draw.circle(screen, RED, (int(self.x + offset_x), int(self.y + offset_y)), self.radius)
+            if self.path:
+                next_x, next_y = self.path[0]
+                target_x = next_x * CELL_SIZE + CELL_SIZE // 2
+                target_y = next_y * CELL_SIZE + CELL_SIZE // 2
+
+                dx = target_x - self.x
+                dy = target_y - self.y
+                distance = ((dx ** 2) + (dy ** 2)) ** 0.5
+
+                if distance < self.speed:
+                    self.x, self.y = target_x, target_y
+                    self.path.pop(0)
+                else:
+                    self.x += (dx / distance) * self.speed
+                    self.y += (dy / distance) * self.speed
+
+    def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
+        x = interpolated_x if interpolated_x is not None else self.x
+        y = interpolated_y if interpolated_y is not None else self.y
+        pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
 
     def should_chase(self):
         return time.time() - self.start_time >= self.chase_delay
@@ -228,7 +293,7 @@ class MenuMode(GameMode):
         self.options = ["Play", "Level Editor"]
         self.selected = 0
 
-    def render(self, screen):
+    def render(self, screen, interpolation):  # Add interpolation parameter here
         screen.fill((50, 50, 50))  # Dark gray background
 
         title = self.title_font.render("Circle Maze Game", True, WHITE)
@@ -280,16 +345,17 @@ class PlayMode(GameMode):
     def update(self):
         if not self.game_over and not self.level_complete:
             self.player.update()
-            self.update_enemy()
+            if self.enemy:
+                self.enemy.update((self.player.x, self.player.y))
             self.collect_coins()
             self.check_enemy_collision()
             self.check_level_complete()
 
-    def render(self, screen):
+    def render(self, screen, interpolation):
         screen.fill(GREEN)
         self.draw_score_area(screen)
         self.draw_maze(screen)
-        self.draw_game_objects(screen)
+        self.draw_game_objects(screen, interpolation)
         self.draw_game_state(screen)
         self.draw_ui(screen)
 
@@ -380,12 +446,14 @@ class PlayMode(GameMode):
                 if cell == ' ' or cell == 'S' or cell == '*' or cell == 'D':
                     pygame.draw.rect(screen, WHITE, (x * CELL_SIZE + self.game.offset_x, y * CELL_SIZE + self.game.offset_y, CELL_SIZE, CELL_SIZE))
 
-    def draw_game_objects(self, screen):
+    def draw_game_objects(self, screen, interpolation):
         for coin in self.coins:
             coin.draw(screen, self.game.offset_x, self.game.offset_y)
 
         if self.enemy:
-            self.enemy.draw(screen, self.game.offset_x, self.game.offset_y)
+            interpolated_x = self.enemy.x + (self.enemy.dx * interpolation)
+            interpolated_y = self.enemy.y + (self.enemy.dy * interpolation)
+            self.enemy.draw(screen, self.game.offset_x, self.game.offset_y, interpolated_x, interpolated_y)
             if not self.enemy.should_chase():
                 countdown = int(self.enemy.chase_delay - (time.time() - self.enemy.start_time))
                 countdown_text = self.font.render(f"Chase starts in: {countdown}", True, RED)
@@ -393,7 +461,9 @@ class PlayMode(GameMode):
                 screen.blit(countdown_text, countdown_rect)
 
         if self.player:
-            self.player.draw(screen, self.game.offset_x, self.game.offset_y)
+            interpolated_x = self.player.x + (self.player.dx * interpolation)
+            interpolated_y = self.player.y + (self.player.dy * interpolation)
+            self.player.draw(screen, self.game.offset_x, self.game.offset_y, interpolated_x, interpolated_y)
 
         if self.star:
             self.star.draw(screen, self.game.offset_x, self.game.offset_y)
@@ -416,18 +486,6 @@ class PlayMode(GameMode):
         quit_text = self.font.render("Press ESC to return to menu", True, BLACK)
         quit_rect = quit_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
         screen.blit(quit_text, quit_rect)
-
-    def update_enemy(self):
-        if self.enemy:
-            if self.enemy.should_chase():
-                if not self.enemy.path:
-                    start = (int(self.enemy.x // CELL_SIZE), int(self.enemy.y // CELL_SIZE))
-                    goal = (int(self.player.x // CELL_SIZE), int(self.player.y // CELL_SIZE))
-                    path = self.find_path(start, goal)
-                    if path:
-                        self.enemy.path = [(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2) for x, y in path[1:]]
-                
-                self.enemy.move_along_path()
 
     def collect_coins(self):
         player_rect = pygame.Rect(self.player.x - self.player.radius, 
@@ -510,7 +568,7 @@ class LevelEditorMode(GameMode):
     def update(self):
         pass
 
-    def render(self, screen):
+    def render(self, screen, interpolation):
         screen.fill(GREEN)
         self.draw_maze(screen)
         self.draw_ui(screen)
@@ -663,18 +721,42 @@ class Game:
         }
         self.current_mode = self.modes["menu"]
 
+        # Fixed timestep variables
+        self.TICKS_PER_SECOND = 60
+        self.SKIP_TICKS = 1000 / self.TICKS_PER_SECOND
+        self.MAX_FRAMESKIP = 5
+
+        self.fps_font = pygame.font.Font(None, 30)
+        self.fps = 0
+        self.fps_update_time = 0
+
     def set_mode(self, mode_name):
         self.current_mode = self.modes[mode_name]
         if mode_name == "play":
             self.modes["play"].init_game_objects()
 
     def run(self):
+        next_game_tick = pygame.time.get_ticks()
+        loops = 0
+
         while self.running:
-            self.clock.tick(FPS)
-            self.handle_events()
-            self.current_mode.update()
-            self.current_mode.render(self.screen)
+            loops = 0
+            while pygame.time.get_ticks() > next_game_tick and loops < self.MAX_FRAMESKIP:
+                self.handle_events()
+                self.current_mode.update()
+                
+                next_game_tick += self.SKIP_TICKS
+                loops += 1
+
+            # Calculate interpolation for smooth rendering
+            interpolation = (pygame.time.get_ticks() + self.SKIP_TICKS - next_game_tick) / self.SKIP_TICKS
+
+            self.current_mode.render(self.screen, interpolation)
+            self.update_fps()
+            self.draw_fps(self.screen)
             pygame.display.flip()
+
+            self.clock.tick(FPS)  # Limit to 60 FPS
 
         pygame.quit()
         sys.exit()
@@ -692,6 +774,18 @@ class Game:
         else:
             print("No levels file found. Entering Level Editor.")
             self.set_mode("level_editor")
+
+    def update_fps(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.fps_update_time > 1000:  # Update FPS every second
+            self.fps = self.clock.get_fps()
+            self.fps_update_time = current_time
+
+    def draw_fps(self, screen):
+        # fps_surface = self.fps_font.render(f'FPS: {self.fps:.2f}', True, (255, 255, 255))
+        # fps_rect = fps_surface.get_rect(midtop=(WIDTH // 2, 10))  # Position in mid top
+        # screen.blit(fps_surface, fps_rect)
+        pass
 
 class LevelManager:
     def __init__(self, levels_file):
