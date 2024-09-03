@@ -16,7 +16,7 @@ MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
 ENEMY_SPEED = CELL_SIZE // 6
 PLAYER_SPEED = CELL_SIZE // 4
-ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)
+ESCAPE_ROUTES = max(10, MAZE_WIDTH // 10)
 DEV_MODE = True
 ENEMY_CHASE_DELAY = 3
 COIN_RADIUS = CELL_SIZE // 7  # New constant for coin radius
@@ -296,9 +296,10 @@ class Diamond(GameObject):
 
 
 class Level:
-    def __init__(self, maze, level_number):
+    def __init__(self, maze, level_number, title=""):
         self.maze = maze
         self.level_number = level_number
+        self.title = title
 
 
 class GameMode:
@@ -319,7 +320,7 @@ class MenuMode(GameMode):
         super().__init__(game)
         self.font = pygame.font.Font(None, 48)
         self.title_font = pygame.font.Font(None, 72)
-        self.options = ["Play", "Character Customization", "Level Editor"]
+        self.options = ["Play", "Runner Customization", "Level Editor"]
         self.selected = 0
 
     def render(self, screen, interpolation):  # Add interpolation parameter here
@@ -349,7 +350,7 @@ class MenuMode(GameMode):
                 if self.selected == 0:
                     self.game.set_mode("play")
                 elif self.selected == 1:
-                    self.game.set_mode("character_customization")
+                    self.game.set_mode("runner_customization")
                 elif self.selected == 2:
                     self.game.set_mode("level_editor")
 
@@ -358,13 +359,14 @@ class PlayMode(GameMode):
         super().__init__(game)
         self.level_manager = level_manager
         self.font = pygame.font.Font(None, 36)
+        self.title_font = pygame.font.Font(None, 48)
         self.init_game_objects()
 
     def get_current_maze(self):
         return self.level_manager.get_current_level().maze
 
     def init_game_objects(self):
-        player_color = self.game.modes["character_customization"].get_player_color()
+        player_color = self.game.modes["runner_customization"].get_player_color()
         self.player = self.create_player(player_color)
         self.enemy = self.create_enemy()
         self.star = self.create_star()
@@ -472,6 +474,13 @@ class PlayMode(GameMode):
         level_rect = level_text.get_rect(midright=(WIDTH - 10, SCORE_AREA_HEIGHT // 2))
         screen.blit(level_text, level_rect)
 
+        # Add level title
+        current_level = self.level_manager.get_current_level()
+        if current_level.title:
+            title_text = self.title_font.render(current_level.title, True, BLACK)
+            title_rect = title_text.get_rect(center=(WIDTH // 2, SCORE_AREA_HEIGHT // 2))
+            screen.blit(title_text, title_rect)
+
     def draw_maze(self, screen):
         for y, row in enumerate(self.get_current_maze()):
             for x, cell in enumerate(row):
@@ -488,7 +497,7 @@ class PlayMode(GameMode):
             self.enemy.draw(screen, self.game.offset_x, self.game.offset_y, interpolated_x, interpolated_y)
             if not self.enemy.should_chase():
                 countdown = int(self.enemy.chase_delay - (time.time() - self.enemy.start_time))
-                countdown_text = self.font.render(f"Chase starts in: {countdown}", True, RED)
+                countdown_text = self.font.render(f"Chase starts in: {countdown} seconds", True, RED)
                 countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
                 screen.blit(countdown_text, countdown_rect)
 
@@ -732,7 +741,7 @@ class LevelEditorMode(GameMode):
         if 0 <= cell_x < MAZE_WIDTH and 0 <= cell_y < MAZE_HEIGHT:
             self.level_manager.get_current_level().maze[cell_y][cell_x] = self.selected_item
 
-class CharacterCustomizationMode(GameMode):
+class RunnerCustomizationMode(GameMode):
     def __init__(self, game):
         super().__init__(game)
         self.font = pygame.font.Font(None, 36)
@@ -746,7 +755,7 @@ class CharacterCustomizationMode(GameMode):
     def render(self, screen, interpolation):
         screen.fill(BLACK)
 
-        title = self.title_font.render("Character Customization", True, WHITE)
+        title = self.title_font.render("Runner Customization", True, WHITE)
         title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 6))
         screen.blit(title, title_rect)
 
@@ -790,7 +799,7 @@ class Game:
         
         # Create instances of game modes
         self.modes["menu"] = MenuMode(self)
-        self.modes["character_customization"] = CharacterCustomizationMode(self)
+        self.modes["runner_customization"] = RunnerCustomizationMode(self)
         self.modes["level_editor"] = LevelEditorMode(self, self.level_manager)
         self.modes["play"] = PlayMode(self, self.level_manager)
         
@@ -871,11 +880,15 @@ class LevelManager:
     def load_levels_from_file(self):
         with open(self.levels_file, 'r') as f:
             levels_data = json.load(f)
-        self.levels = [Level(level_data["maze"], level_data["level_number"]) for level_data in levels_data]
+        self.levels = [Level(level_data["maze"], level_data["level_number"], level_data.get("title", "")) for level_data in levels_data]
+        if self.levels and not self.levels[0].title:
+            self.levels[0].title = "The Zig Zag"
+        if len(self.levels) > 1 and not self.levels[1].title:
+            self.levels[1].title = "The Swirl"
         print(f"Levels loaded from {self.levels_file}")
 
     def save_levels_to_file(self):
-        levels_data = [{"maze": level.maze, "level_number": level.level_number} for level in self.levels]
+        levels_data = [{"maze": level.maze, "level_number": level.level_number, "title": level.title} for level in self.levels]
         with open(self.levels_file, 'w') as f:
             json.dump(levels_data, f)
         print(f"Levels saved to {self.levels_file}")
