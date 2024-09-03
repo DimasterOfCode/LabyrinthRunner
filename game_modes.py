@@ -1,7 +1,9 @@
 import random
 import time
+import math
 
 import pygame
+import pygame.gfxdraw
 
 from constants import *
 from game_objects import *
@@ -24,41 +26,63 @@ class GameMode:
 class MenuMode(GameMode):
     def __init__(self, game):
         super().__init__(game)
-        self.font = pygame.font.Font(None, 48)
-        self.title_font = pygame.font.Font(None, 72)
-        self.options = ["Play", "Runner Customization", "Level Editor"]
-        self.selected = 0
+        self.title = "Labyrinth Runner"  # Update the title here
+        self.font = pygame.font.Font(None, 50)
+        self.small_font = pygame.font.Font(None, 30)
+        self.buttons = [
+            {"text": "Play", "action": lambda: self.game.set_mode("play")},
+            {"text": "Level Editor", "action": lambda: self.game.set_mode("level_editor")},
+            {"text": "Customize Runner", "action": lambda: self.game.set_mode("runner_customization")},
+            {"text": "Quit", "action": lambda: setattr(self.game, 'running', False)}
+        ]
+        self.selected_button = 0
+        self.animation_offset = 0
+        self.animation_speed = 0.5
 
-    def render(self, screen, interpolation):  # Add interpolation parameter here
-        screen.fill(BLACK)  # Dark gray background
+    def update(self):
+        self.animation_offset = (self.animation_offset + self.animation_speed) % (2 * math.pi)
 
-        title = self.title_font.render("Labyrinth Runner", True, WHITE)
-        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 6))
+    def render(self, screen, interpolation):
+        # Create gradient background
+        for y in range(HEIGHT):
+            color = self.lerp_color((20, 20, 50), (50, 50, 100), y / HEIGHT)
+            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
+
+        # Draw animated circles
+        for i in range(10):
+            radius = 50 + 20 * math.sin(self.animation_offset + i * 0.5)
+            x = WIDTH * (i + 1) / 11
+            y = HEIGHT * (0.2 + 0.1 * math.sin(self.animation_offset + i * 0.7))
+            pygame.gfxdraw.aacircle(screen, int(x), int(y), int(radius), (255, 255, 255, 50))
+
+        # Draw title
+        title = self.font.render(self.title, True, (255, 255, 255))
+        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 4))
         screen.blit(title, title_rect)
 
-        for i, option in enumerate(self.options):
-            color = GOLD if i == self.selected else WHITE
-            text = self.font.render(option, True, color)
-            rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2.5 + i * 60))
+        # Draw buttons
+        for i, button in enumerate(self.buttons):
+            text = self.small_font.render(button["text"], True, (255, 255, 255))
+            button_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
             
-            pygame.draw.rect(screen, GREEN, rect.inflate(20, 10), border_radius=10)
-            pygame.draw.rect(screen, BLACK, rect.inflate(20, 10), 2, border_radius=10)
+            if i == self.selected_button:
+                # Draw highlighted button
+                pygame.draw.rect(screen, (100, 100, 255), button_rect.inflate(20, 10), border_radius=5)
             
-            screen.blit(text, rect)
+            screen.blit(text, button_rect)
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
-                self.selected = (self.selected - 1) % len(self.options)
+                self.selected_button = (self.selected_button - 1) % len(self.buttons)
             elif event.key == pygame.K_DOWN:
-                self.selected = (self.selected + 1) % len(self.options)
+                self.selected_button = (self.selected_button + 1) % len(self.buttons)
             elif event.key == pygame.K_RETURN:
-                if self.selected == 0:
-                    self.game.set_mode("play")
-                elif self.selected == 1:
-                    self.game.set_mode("runner_customization")
-                elif self.selected == 2:
-                    self.game.set_mode("level_editor")
+                self.buttons[self.selected_button]["action"]()
+
+    @staticmethod
+    def lerp_color(color1, color2, t):
+        return tuple(int(a + (b - a) * t) for a, b in zip(color1, color2))
 
 class PlayMode(GameMode):
     def __init__(self, game, level_manager):
@@ -92,10 +116,13 @@ class PlayMode(GameMode):
             self.check_level_complete()
 
     def render(self, screen, interpolation):
-        screen.fill(GREEN)
+        # Draw gradient background
+        self.draw_gradient_background(screen)
+
+        # Render maze and other game elements
+        self.render_maze(screen)
+        self.render_game_objects(screen, interpolation)
         self.draw_score_area(screen)
-        self.draw_maze(screen)
-        self.draw_game_objects(screen, interpolation)
         self.draw_game_state(screen)
         self.draw_ui(screen)
 
@@ -187,13 +214,24 @@ class PlayMode(GameMode):
             title_rect = title_text.get_rect(center=(WIDTH // 2, SCORE_AREA_HEIGHT // 2))
             screen.blit(title_text, title_rect)
 
-    def draw_maze(self, screen):
+    def draw_gradient_background(self, screen):
+        color1 = (0, 0, 0)  # Start color (black)
+        color2 = (0, 0, 255)  # End color (blue)
+        for y in range(HEIGHT):
+            color = (
+                color1[0] + (color2[0] - color1[0]) * y // HEIGHT,
+                color1[1] + (color2[1] - color1[1]) * y // HEIGHT,
+                color1[2] + (color2[2] - color1[2]) * y // HEIGHT,
+            )
+            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
+
+    def render_maze(self, screen):
         for y, row in enumerate(self.get_current_maze()):
             for x, cell in enumerate(row):
                 if cell == ' ' or cell == 'S' or cell == '*' or cell == 'D':
                     pygame.draw.rect(screen, WHITE, (x * CELL_SIZE + self.game.offset_x, y * CELL_SIZE + self.game.offset_y, CELL_SIZE, CELL_SIZE))
 
-    def draw_game_objects(self, screen, interpolation):
+    def render_game_objects(self, screen, interpolation):
         for coin in self.coins:
             coin.draw(screen, self.game.offset_x, self.game.offset_y)
 

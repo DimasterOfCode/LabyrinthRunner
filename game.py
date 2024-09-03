@@ -4,18 +4,16 @@ import sys
 import pygame
 import pygame.gfxdraw
 
-from constants import *
-from game_modes import *
-from game_objects import *
+from constants import WIDTH, HEIGHT, SCORE_AREA_HEIGHT, MAZE_WIDTH, CELL_SIZE, FPS
+from game_modes import MenuMode, RunnerCustomizationMode, LevelEditorMode, PlayMode
 from level_manager import LevelManager
-from maze_utils import MazeUtils
 
 
 class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Circle Maze Game")
+        pygame.display.set_caption("Labyrinth Runner")
         self.clock = pygame.time.Clock()
         
         self.level_manager = LevelManager("levels.json")
@@ -66,7 +64,7 @@ class Game:
             # Calculate interpolation for smooth rendering
             interpolation = (pygame.time.get_ticks() + self.SKIP_TICKS - next_game_tick) / self.SKIP_TICKS
 
-            self.current_mode.render(self.screen, interpolation)
+            self.current_mode.render(self.screen, interpolation)  # Call render method of current mode
             self.update_fps()
             self.draw_fps(self.screen)
             pygame.display.flip()
@@ -101,3 +99,8 @@ class Game:
         # fps_rect = fps_surface.get_rect(midtop=(WIDTH // 2, 10))  # Position in mid top
         # screen.blit(fps_surface, fps_rect)
         pass
+
+
+if __name__ == "__main__":
+    game = Game()
+    game.run()
