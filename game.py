@@ -408,6 +408,7 @@ class Game:
         
         self.level_manager = LevelManager("levels.json")
         self.dev_mode = DevMode(self)
+        self.level_editor = LevelEditor(self)
         self.is_dev_mode = False
         self.show_help = False
         self.is_drawing = False
@@ -423,6 +424,7 @@ class Game:
         self.menu = Menu(self)
         self.renderer = GameRenderer(self)
         self.logic = GameLogic(self)
+        self.event_handler = EventHandler(self)
 
     def load_or_generate_levels(self):
         if os.path.exists(self.level_manager.levels_file):
@@ -512,43 +514,13 @@ class Game:
     def run(self):
         while self.running:
             self.clock.tick(FPS)
-            self.handle_events()
+            self.event_handler.handle_events()
             self.logic.update()
             self.renderer.draw()
             pygame.display.flip()
 
         pygame.quit()
         sys.exit()
-
-    def handle_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-            elif self.state == "menu":
-                self.menu.handle_event(event)
-            else:
-                self.handle_input(event)
-
-    def handle_input(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                self.return_to_menu()
-            elif self.is_dev_mode:
-                self.dev_mode.handle_dev_mode_input(event)
-            elif self.level_complete:
-                if event.key == pygame.K_n:
-                    self.next_level()
-            else:
-                self.handle_player_input(event)
-        if event.type == pygame.KEYUP and self.is_dev_mode:
-            self.dev_mode.handle_keyup(event)
-        if self.is_dev_mode:
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                self.dev_mode.handle_mousebuttondown(event)
-            elif event.type == pygame.MOUSEBUTTONUP:
-                self.dev_mode.handle_mousebuttonup(event)
-            elif event.type == pygame.MOUSEMOTION:
-                self.dev_mode.handle_mousemotion(event)
 
     def handle_player_input(self, event):
         if event.key == pygame.K_RIGHT:
@@ -760,6 +732,130 @@ class LevelManager:
         self.levels.append(Level(new_maze, len(self.levels) + 1))
         self.current_level_index = len(self.levels) - 1
         return self.get_current_level()
+
+class LevelEditor:
+    def __init__(self, game):
+        self.game = game
+        self.selected_item = ' '
+        self.is_drawing = False
+
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            self.handle_keydown(event)
+        elif event.type == pygame.KEYUP:
+            self.handle_keyup(event)
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            self.handle_mousebuttondown(event)
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.handle_mousebuttonup(event)
+        elif event.type == pygame.MOUSEMOTION:
+            self.handle_mousemotion(event)
+
+    def handle_keydown(self, event):
+        if event.key == pygame.K_h:
+            self.game.show_help = not self.game.show_help
+        elif event.key == pygame.K_SPACE:
+            self.save_current_level()
+        elif event.key == pygame.K_e:
+            self.erase_maze()
+        elif event.key == pygame.K_n:
+            self.new_level()
+        elif event.key == pygame.K_LEFTBRACKET:
+            self.prev_level()
+        elif event.key == pygame.K_RIGHTBRACKET:
+            self.next_level()
+        elif event.key == pygame.K_p:
+            self.selected_item = 'S'  # Start/Player
+        elif event.key == pygame.K_n:
+            self.selected_item = 'E'  # Enemy
+        elif event.key == pygame.K_s:
+            self.selected_item = '*'  # Star
+        elif event.key == pygame.K_m:
+            self.selected_item = 'D'  # Diamond
+        elif event.key == pygame.K_w:
+            self.selected_item = 'X'  # Wall
+        elif event.key == pygame.K_c:
+            self.selected_item = ' '  # Clear/Empty
+
+    def handle_keyup(self, event):
+        self.selected_item = ' '  # Reset to empty space when key is released
+
+    def handle_mousebuttondown(self, event):
+        self.is_drawing = True
+        self.handle_input(event.pos)
+
+    def handle_mousebuttonup(self, event):
+        self.is_drawing = False
+
+    def handle_mousemotion(self, event):
+        if self.is_drawing:
+            self.handle_input(event.pos)
+
+    def handle_input(self, pos):
+        x = (pos[0] - self.game.offset_x) // CELL_SIZE
+        y = (pos[1] - self.game.offset_y) // CELL_SIZE
+        if 0 <= x < MAZE_WIDTH and 0 <= y < MAZE_HEIGHT:
+            if self.selected_item in ['S', 'E', '*']:
+                self.remove_duplicate(self.selected_item, x, y)
+            self.game.level_manager.get_current_level().maze[y][x] = self.selected_item
+
+    def remove_duplicate(self, char, new_x, new_y):
+        maze = self.game.level_manager.get_current_level().maze
+        for y, row in enumerate(maze):
+            for x, cell in enumerate(row):
+                if cell == char and (x != new_x or y != new_y):
+                    maze[y][x] = ' '
+
+    def erase_maze(self):
+        self.game.level_manager.get_current_level().maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
+        print("Maze erased")
+
+    def save_current_level(self):
+        self.game.level_manager.save_levels_to_file()
+        print(f"Level {self.game.level_manager.get_current_level().level_number} saved")
+
+    def new_level(self):
+        self.game.level_manager.new_level()
+        self.game.init_game_objects()
+
+    def next_level(self):
+        self.game.level_manager.next_level()
+        self.game.init_game_objects()
+
+    def prev_level(self):
+        self.game.level_manager.prev_level()
+        self.game.init_game_objects()
+
+class EventHandler:
+    def __init__(self, game):
+        self.game = game
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game.running = False
+            elif self.game.state == "menu":
+                self.handle_menu_event(event)
+            elif self.game.state == "play":
+                self.handle_play_event(event)
+            elif self.game.state == "level_editor":
+                self.handle_level_editor_event(event)
+
+    def handle_menu_event(self, event):
+        self.game.menu.handle_event(event)
+
+    def handle_play_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.game.return_to_menu()
+            elif self.game.level_complete:
+                if event.key == pygame.K_n:
+                    self.game.next_level()
+            else:
+                self.game.handle_player_input(event)
+
+    def handle_level_editor_event(self, event):
+        self.game.level_editor.handle_event(event)
 
 if __name__ == "__main__":
     game = Game()
