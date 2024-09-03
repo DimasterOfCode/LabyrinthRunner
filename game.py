@@ -561,10 +561,6 @@ class Game:
         elif event.key == pygame.K_UP:
             self.player.set_direction((0, -1))
 
-    def save_current_level(self):
-        self.level_manager.save_levels_to_file()
-        print(f"Level {self.level_manager.get_current_level().level_number} saved")
-
     def toggle_dev_mode(self):
         self.is_dev_mode = not self.is_dev_mode
         if self.is_dev_mode:
@@ -572,23 +568,6 @@ class Game:
         else:
             self.level_manager.load_levels_from_file()
         self.init_game_objects()
-
-    def next_level(self):
-        self.level_manager.next_level()
-        self.init_game_objects()
-
-    def prev_level(self):
-        self.level_manager.prev_level()
-        self.init_game_objects()
-
-    def start_game(self):
-        self.state = "play"
-        self.init_game_objects()
-
-    def start_level_editor(self):
-        self.state = "level_editor"
-        self.is_dev_mode = True
-        self.dev_mode.init_dev_mode()
 
     def return_to_menu(self):
         self.state = "menu"
@@ -610,6 +589,15 @@ class Game:
                     self.level_manager.get_current_level().maze[cell_y][cell_x] == 'X'):
                     return True
         return False
+    
+    def start_level_editor(self):
+        self.state = "level_editor"
+        self.is_dev_mode = True
+        self.dev_mode.init_dev_mode()
+
+    def start_game(self):
+        self.state = "play"
+        self.init_game_objects()        
 
 class Menu:
     def __init__(self, game):
@@ -701,15 +689,15 @@ class DevMode:
         if event.key == pygame.K_h:
             self.game.show_help = not self.game.show_help
         elif event.key == pygame.K_SPACE:
-            self.game.save_current_level()
+            self.save_current_level()
         elif event.key == pygame.K_e:
             self.erase_maze()
         elif event.key == pygame.K_n:
-            self.game.level_manager.new_level()
+            self.new_level()
         elif event.key == pygame.K_LEFTBRACKET:
-            self.game.level_manager.prev_level()
+            self.prev_level()
         elif event.key == pygame.K_RIGHTBRACKET:
-            self.game.level_manager.next_level()
+            self.next_level()
         elif event.key == pygame.K_p:
             self.selected_item = 'S'  # Start/Player
         elif event.key == pygame.K_n:
@@ -741,6 +729,22 @@ class DevMode:
             self.game.level_manager.get_current_level().maze[1][1] = 'S'
         if 'E' not in [cell for row in self.game.level_manager.get_current_level().maze for cell in row]:
             self.game.level_manager.get_current_level().maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
+        self.game.init_game_objects()
+
+    def save_current_level(self):
+        self.game.level_manager.save_levels_to_file()
+        print(f"Level {self.game.level_manager.get_current_level().level_number} saved")
+
+    def new_level(self):
+        self.game.level_manager.new_level()
+        self.game.init_game_objects()
+
+    def next_level(self):
+        self.game.level_manager.next_level()
+        self.game.init_game_objects()
+
+    def prev_level(self):
+        self.game.level_manager.prev_level()
         self.game.init_game_objects()
 
 if __name__ == "__main__":
