@@ -165,6 +165,13 @@ class Diamond(GameObject):
         ]
         pygame.draw.polygon(screen, CYAN, points)
 
+
+class Level:
+    def __init__(self, maze, level_number):
+        self.maze = maze
+        self.level_number = level_number
+
+
 # Refactored Game class
 class Game:
     def __init__(self):
@@ -180,7 +187,12 @@ class Game:
         self.dev_selected_item = ' '  # Default to empty space
         self.maze_file = "custom_maze.json"
         
-        self.load_or_generate_maze()
+        # Add these new attributes
+        self.levels = []
+        self.current_level_index = 0
+        self.levels_file = "levels.json"
+        
+        self.load_or_generate_maze()  # We'll modify this method in the next step
 
         self.player = self.create_player()
         if self.player is None:
@@ -197,18 +209,66 @@ class Game:
         self.is_drawing = False  # New attribute to track if we're currently drawing
         self.show_help = False  # New attribute to control help overlay visibility
 
+    def load_levels_from_file(self):
+        with open(self.levels_file, 'r') as f:
+            levels_data = json.load(f)
+        self.levels = [Level(level_data["maze"], level_data["level_number"]) for level_data in levels_data]
+        self.current_level_index = 0
+        self.level = self.levels[self.current_level_index].level_number
+        self.maze = [''.join(row) for row in self.levels[self.current_level_index].maze]
+        self.init_level()
+        print(f"Levels loaded from {self.levels_file}")
+
     def load_or_generate_maze(self):
-        if os.path.exists(self.maze_file):
-            self.load_maze_from_file()
+        if os.path.exists(self.levels_file):
+            self.load_levels_from_file()
         else:
-            print("No maze file found. Entering Dev Mode.")
+            print("No levels file found. Entering Dev Mode.")
             self.dev_mode = True
             self.init_dev_mode()
 
+    def next_level(self):
+        if self.dev_mode:
+            self.save_current_level()
+        self.current_level_index = (self.current_level_index + 1) % len(self.levels)
+        self.level = self.levels[self.current_level_index].level_number
+        self.dev_maze = self.levels[self.current_level_index].maze
+        self.maze = [''.join(row) for row in self.dev_maze]
+        self.init_level()
+        self.level_complete = False
+        
+        if self.enemy:
+            self.enemy.start_time = time.time()
+
+    def prev_level(self):
+        if self.dev_mode:
+            self.save_current_level()
+        self.current_level_index = (self.current_level_index - 1) % len(self.levels)
+        self.level = self.levels[self.current_level_index].level_number
+        self.dev_maze = self.levels[self.current_level_index].maze
+        self.maze = [''.join(row) for row in self.dev_maze]
+        self.init_level()
+        self.level_complete = False
+
+    def new_level(self):
+        if self.dev_mode:
+            self.save_current_level()
+        new_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
+        self.levels.append(Level(new_maze, len(self.levels) + 1))
+        self.current_level_index = len(self.levels) - 1
+        self.level = self.levels[self.current_level_index].level_number
+        self.dev_maze = new_maze
+        self.maze = [''.join(row) for row in self.dev_maze]
+        self.init_level()
+        print(f"New level {self.level} created")
+
     def init_dev_mode(self):
-        if self.dev_maze is None:
-            self.dev_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
+        if not self.levels:
+            self.levels = [Level([['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)], 1)]
+        self.dev_maze = self.levels[self.current_level_index].maze
+        if 'S' not in [cell for row in self.dev_maze for cell in row]:
             self.dev_maze[1][1] = 'S'
+        if 'E' not in [cell for row in self.dev_maze for cell in row]:
             self.dev_maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
         self.maze = [''.join(row) for row in self.dev_maze]
         self.coins = []
@@ -224,6 +284,7 @@ class Game:
         self.star = self.create_star()
         self.diamonds = self.create_diamonds()
         self.score = 0
+        self.player = self.create_player()
 
     def create_game_object(self, object_class, *args):
         current_maze = self.dev_maze if self.dev_mode else self.maze
@@ -342,16 +403,6 @@ class Game:
                 self.maze[diamond_y] = self.maze[diamond_y][:diamond_x] + ' ' + self.maze[diamond_y][diamond_x+1:]
                 self.diamonds.remove(diamond)
                 self.score += 10000
-
-    def next_level(self):
-        self.level += 1
-        self.load_or_generate_maze()
-        self.player = self.create_player()
-        self.init_level()
-        self.level_complete = False
-        
-        if self.enemy:
-            self.enemy.start_time = time.time()
 
     def check_enemy_collision(self):
         player_rect = pygame.Rect(self.player.x - self.player.radius, self.player.y - self.player.radius,
@@ -490,6 +541,12 @@ class Game:
             "E - Erase entire maze",
             "ESC - Exit Dev Mode",
             "",
+            "Level Management:",
+            "N - New level",
+            "S - Save current level",
+            "[ - Previous level",
+            "] - Next level",
+            "",
             "Click and drag to draw",
             "",
             "Press H to close this help"
@@ -528,6 +585,21 @@ class Game:
         self.diamonds = self.create_diamonds()
         print(f"Maze loaded from {self.maze_file}")
 
+    def save_current_level(self):
+        if self.current_level_index < len(self.levels):
+            self.levels[self.current_level_index].maze = self.dev_maze
+        else:
+            self.levels.append(Level(self.dev_maze, len(self.levels) + 1))
+        self.save_levels_to_file()
+        print(f"Level {self.level} saved")
+
+    def save_levels_to_file(self):
+        levels_data = [{"maze": level.maze, "level_number": level.level_number} for level in self.levels]
+        with open(self.levels_file, 'w') as f:
+            json.dump(levels_data, f)
+        print(f"Levels saved to {self.levels_file}")
+
+
     def run(self):
         running = True
         while running:
@@ -551,9 +623,15 @@ class Game:
                         if event.key == pygame.K_h:
                             self.show_help = not self.show_help
                         elif event.key == pygame.K_SPACE:
-                            self.save_dev_maze()
+                            self.save_current_level()
                         elif event.key == pygame.K_e:
                             self.erase_dev_maze()
+                        elif event.key == pygame.K_n:
+                            self.new_level()
+                        elif event.key == pygame.K_LEFTBRACKET:
+                            self.prev_level()
+                        elif event.key == pygame.K_RIGHTBRACKET:
+                            self.next_level()
                         elif event.key == pygame.K_p:
                             self.dev_selected_item = 'S'  # Start/Player
                         elif event.key == pygame.K_n:
@@ -567,7 +645,7 @@ class Game:
                         elif event.key == pygame.K_c:
                             self.dev_selected_item = ' '  # Clear/Empty
                     elif event.key == pygame.K_l:
-                        self.load_maze_from_file()
+                        self.load_levels_from_file()
                     elif self.game_over:
                         if event.key == pygame.K_SPACE:
                             self.__init__()
