@@ -541,15 +541,14 @@ class Game:
             else:
                 self.handle_player_input(event)
         if event.type == pygame.KEYUP and self.is_dev_mode:
-            self.dev_mode.selected_item = ' '  # Reset to empty space when key is released
+            self.dev_mode.handle_keyup(event)
         if self.is_dev_mode:
             if event.type == pygame.MOUSEBUTTONDOWN:
-                self.is_drawing = True
-                self.dev_mode.handle_input(event.pos)
+                self.dev_mode.handle_mousebuttondown(event)
             elif event.type == pygame.MOUSEBUTTONUP:
-                self.is_drawing = False
-            elif event.type == pygame.MOUSEMOTION and self.is_drawing:
-                self.dev_mode.handle_input(event.pos)
+                self.dev_mode.handle_mousebuttonup(event)
+            elif event.type == pygame.MOUSEMOTION:
+                self.dev_mode.handle_mousemotion(event)
 
     def handle_player_input(self, event):
         if event.key == pygame.K_RIGHT:
@@ -637,45 +636,11 @@ class Menu:
                 elif self.selected == 1:
                     self.game.start_level_editor()
 
-class LevelManager:
-    def __init__(self, levels_file):
-        self.levels_file = levels_file
-        self.levels = []
-        self.current_level_index = 0
-
-    def load_levels_from_file(self):
-        with open(self.levels_file, 'r') as f:
-            levels_data = json.load(f)
-        self.levels = [Level(level_data["maze"], level_data["level_number"]) for level_data in levels_data]
-        print(f"Levels loaded from {self.levels_file}")
-
-    def save_levels_to_file(self):
-        levels_data = [{"maze": level.maze, "level_number": level.level_number} for level in self.levels]
-        with open(self.levels_file, 'w') as f:
-            json.dump(levels_data, f)
-        print(f"Levels saved to {self.levels_file}")
-
-    def get_current_level(self):
-        return self.levels[self.current_level_index]
-
-    def next_level(self):
-        self.current_level_index = (self.current_level_index + 1) % len(self.levels)
-        return self.get_current_level()
-
-    def prev_level(self):
-        self.current_level_index = (self.current_level_index - 1) % len(self.levels)
-        return self.get_current_level()
-
-    def new_level(self):
-        new_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
-        self.levels.append(Level(new_maze, len(self.levels) + 1))
-        self.current_level_index = len(self.levels) - 1
-        return self.get_current_level()
-
 class DevMode:
     def __init__(self, game):
         self.game = game
         self.selected_item = ' '
+        self.is_drawing = False
 
     def handle_input(self, pos):
         x = (pos[0] - self.game.offset_x) // CELL_SIZE
@@ -710,6 +675,20 @@ class DevMode:
             self.selected_item = 'X'  # Wall
         elif event.key == pygame.K_c:
             self.selected_item = ' '  # Clear/Empty
+
+    def handle_keyup(self, event):
+        self.selected_item = ' '  # Reset to empty space when key is released
+
+    def handle_mousebuttondown(self, event):
+        self.is_drawing = True
+        self.handle_input(event.pos)
+
+    def handle_mousebuttonup(self, event):
+        self.is_drawing = False
+
+    def handle_mousemotion(self, event):
+        if self.is_drawing:
+            self.handle_input(event.pos)
 
     def remove_duplicate(self, char, new_x, new_y):
         maze = self.game.level_manager.get_current_level().maze
@@ -746,6 +725,41 @@ class DevMode:
     def prev_level(self):
         self.game.level_manager.prev_level()
         self.game.init_game_objects()
+
+class LevelManager:
+    def __init__(self, levels_file):
+        self.levels_file = levels_file
+        self.levels = []
+        self.current_level_index = 0
+
+    def load_levels_from_file(self):
+        with open(self.levels_file, 'r') as f:
+            levels_data = json.load(f)
+        self.levels = [Level(level_data["maze"], level_data["level_number"]) for level_data in levels_data]
+        print(f"Levels loaded from {self.levels_file}")
+
+    def save_levels_to_file(self):
+        levels_data = [{"maze": level.maze, "level_number": level.level_number} for level in self.levels]
+        with open(self.levels_file, 'w') as f:
+            json.dump(levels_data, f)
+        print(f"Levels saved to {self.levels_file}")
+
+    def get_current_level(self):
+        return self.levels[self.current_level_index]
+
+    def next_level(self):
+        self.current_level_index = (self.current_level_index + 1) % len(self.levels)
+        return self.get_current_level()
+
+    def prev_level(self):
+        self.current_level_index = (self.current_level_index - 1) % len(self.levels)
+        return self.get_current_level()
+
+    def new_level(self):
+        new_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
+        self.levels.append(Level(new_maze, len(self.levels) + 1))
+        self.current_level_index = len(self.levels) - 1
+        return self.get_current_level()
 
 if __name__ == "__main__":
     game = Game()
