@@ -65,11 +65,32 @@ class MazeUtils:
                     return True
         return False
 
+    @staticmethod
+    def find_path(maze, start, goal):
+        queue = deque([[start]])
+        visited = set([start])
+        
+        while queue:
+            path = queue.popleft()
+            x, y = path[-1]
+            
+            if (x, y) == goal:
+                return path
+            
+            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                next_x, next_y = x + dx, y + dy
+                if (0 <= next_x < MAZE_WIDTH and 0 <= next_y < MAZE_HEIGHT and
+                    maze[next_y][next_x] != 'X' and (next_x, next_y) not in visited):
+                    queue.append(path + [(next_x, next_y)])
+                    visited.add((next_x, next_y))
+        
+        return None
+
 class Player(MovableObject):
     SYMBOL = 'S'
-    def __init__(self, play_mode, x, y, radius, speed):
+    def __init__(self, x, y, radius, speed, collision_checker):
         super().__init__(x, y, radius, speed)
-        self.play_mode = play_mode
+        self.collision_checker = collision_checker
         self.direction = None
 
     def move(self, dx, dy):
@@ -94,8 +115,7 @@ class Player(MovableObject):
             dx, dy = self.direction
             new_x = self.x + dx * self.speed
             new_y = self.y + dy * self.speed
-            current_maze = self.play_mode.get_current_maze()
-            if not MazeUtils.check_collision(current_maze, new_x, new_y, self.radius):
+            if not self.collision_checker(new_x, new_y, self.radius):
                 self.move(dx, dy)
             else:
                 self.direction = None
@@ -111,9 +131,9 @@ class Coin(GameObject):
 
 class Enemy(MovableObject):
     SYMBOL = 'E'
-    def __init__(self, game, x, y, radius, speed):
+    def __init__(self, x, y, radius, speed, path_finder):
         super().__init__(x, y, radius, speed)
-        self.game = game
+        self.path_finder = path_finder
         self.path = []
         self.start_time = time.time()
         self.chase_delay = ENEMY_CHASE_DELAY
@@ -283,13 +303,19 @@ class PlayMode(GameMode):
             else:
                 self.handle_player_input(event)
 
+    def check_collision(self, x, y, radius):
+        return MazeUtils.check_collision(self.get_current_maze(), x, y, radius)
+
+    def find_path(self, start, goal):
+        return MazeUtils.find_path(self.get_current_maze(), start, goal)
+
     def create_game_object(self, object_class, *args):
         current_maze = self.get_current_maze()
         for y, row in enumerate(current_maze):
             for x, cell in enumerate(row):
                 if cell == object_class.SYMBOL:
                     if object_class in [Player, Enemy]:
-                        return object_class(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+                        return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
                     else:
                         return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
         
@@ -297,14 +323,15 @@ class PlayMode(GameMode):
         if empty_cells:
             x, y = random.choice(empty_cells)
             if object_class in [Player, Enemy]:
-                return object_class(self, x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+                return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
             else:
                 return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
         
         return None
 
     def create_player(self):
-        return self.create_game_object(Player, CELL_SIZE // 2 - 1, PLAYER_SPEED)
+        player = self.create_game_object(Player, CELL_SIZE // 2 - 1, PLAYER_SPEED, self.check_collision)
+        return player
 
     def create_coins(self, num_coins):
         coins = []
@@ -316,7 +343,8 @@ class PlayMode(GameMode):
         return coins
 
     def create_enemy(self):
-        return self.create_game_object(Enemy, CELL_SIZE // 2 - 1, ENEMY_SPEED)
+        enemy = self.create_game_object(Enemy, CELL_SIZE // 2 - 1, ENEMY_SPEED, self.find_path)
+        return enemy
 
     def create_star(self):
         return self.create_game_object(Star, CELL_SIZE // 2)
@@ -329,26 +357,6 @@ class PlayMode(GameMode):
                 if cell == 'D':
                     diamonds.append(Diamond(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2))
         return diamonds
-
-    def find_path(self, start, goal):
-        queue = deque([[start]])
-        visited = set([start])
-        
-        while queue:
-            path = queue.popleft()
-            x, y = path[-1]
-            
-            if (x, y) == goal:
-                return path
-            
-            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-                next_x, next_y = x + dx, y + dy
-                if (0 <= next_x < MAZE_WIDTH and 0 <= next_y < MAZE_HEIGHT and
-                    self.get_current_maze()[next_y][next_x] != 'X' and (next_x, next_y) not in visited):
-                    queue.append(path + [(next_x, next_y)])
-                    visited.add((next_x, next_y))
-        
-        return None
 
     def next_level(self):
         self.level_manager.next_level()
