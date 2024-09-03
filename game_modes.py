@@ -123,6 +123,14 @@ class PlayMode(GameMode):
         self.render_maze(screen)
         self.render_game_objects(screen, interpolation)
         self.draw_score_area(screen)
+
+        # Darken the screen on level completion and game over
+        if self.level_complete or self.game_over:
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+            screen.blit(overlay, (0, 0))
+
+        # Draw game state and UI after the darkening effect
         self.draw_game_state(screen)
         self.draw_ui(screen)
 
@@ -257,18 +265,44 @@ class PlayMode(GameMode):
             diamond.draw(screen, self.game.offset_x, self.game.offset_y)
 
     def draw_game_state(self, screen):
-        if self.game_over:
-            game_over_text = self.font.render("GAME OVER", True, RED)
-            game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-            screen.blit(game_over_text, game_over_rect)
+        if self.game_over or self.level_complete:
+            if self.game_over:
+                main_text = "GAME OVER"
+                color = RED
+            else:
+                main_text = "Level Complete!"
+                color = GOLD
 
-        if self.level_complete:
-            level_complete_text = self.font.render("Level Complete! Press N for next level", True, GOLD)
-            level_complete_rect = level_complete_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-            screen.blit(level_complete_text, level_complete_rect)
+            # Render text with shadow
+            shadow_color = BLACK
+            main_text_shadow = self.font.render(main_text, True, shadow_color)
+            main_text_surface = self.font.render(main_text, True, color)
+
+            # Position text
+            text_rect = main_text_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            shadow_rect = text_rect.copy()
+            shadow_rect.x += 2
+            shadow_rect.y += 2
+
+            # Draw shadow first, then main text
+            screen.blit(main_text_shadow, shadow_rect)
+            screen.blit(main_text_surface, text_rect)
+
+            if self.level_complete:
+                next_level_text = "Press N for next level"
+                next_level_shadow = self.font.render(next_level_text, True, shadow_color)
+                next_level_surface = self.font.render(next_level_text, True, WHITE)
+
+                next_rect = next_level_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
+                next_shadow_rect = next_rect.copy()
+                next_shadow_rect.x += 2
+                next_shadow_rect.y += 2
+
+                screen.blit(next_level_shadow, next_shadow_rect)
+                screen.blit(next_level_surface, next_rect)
 
     def draw_ui(self, screen):
-        quit_text = self.font.render("Press ESC to return to menu", True, BLACK)
+        quit_text = self.font.render("Press ESC to return to menu", True, WHITE)
         quit_rect = quit_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
         screen.blit(quit_text, quit_rect)
 
