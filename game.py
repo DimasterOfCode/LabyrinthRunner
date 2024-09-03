@@ -25,6 +25,8 @@ COIN_RADIUS = CELL_SIZE // 7  # New constant for coin radius
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 128, 0)
+BLUE = (0, 0, 255)
+MAGENTA = (255, 0, 255)
 LIGHT_GREEN = (144, 238, 144)
 YELLOW = (200, 200, 0)
 LIGHT_BROWN = (205, 133, 63)
@@ -133,11 +135,11 @@ class AStar:
 
 class Player(MovableObject):
     SYMBOL = 'S'
-    def __init__(self, x, y, radius, speed, collision_checker):
+    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD):
         super().__init__(x, y, radius, speed)
         self.collision_checker = collision_checker
         self.direction = None
-        self.color = GOLD  # Changed to match the star's color
+        self.color = color
 
     def move(self, dx, dy):
         self.x += dx * self.speed
@@ -317,7 +319,7 @@ class MenuMode(GameMode):
         super().__init__(game)
         self.font = pygame.font.Font(None, 48)
         self.title_font = pygame.font.Font(None, 72)
-        self.options = ["Play", "Level Editor"]
+        self.options = ["Play", "Character Customization", "Level Editor"]
         self.selected = 0
 
     def render(self, screen, interpolation):  # Add interpolation parameter here
@@ -347,6 +349,8 @@ class MenuMode(GameMode):
                 if self.selected == 0:
                     self.game.set_mode("play")
                 elif self.selected == 1:
+                    self.game.set_mode("character_customization")
+                elif self.selected == 2:
                     self.game.set_mode("level_editor")
 
 class PlayMode(GameMode):
@@ -360,7 +364,8 @@ class PlayMode(GameMode):
         return self.level_manager.get_current_level().maze
 
     def init_game_objects(self):
-        self.player = self.create_player()
+        player_color = self.game.modes["character_customization"].get_player_color()
+        self.player = self.create_player(player_color)
         self.enemy = self.create_enemy()
         self.star = self.create_star()
         self.diamonds = self.create_diamonds()
@@ -422,8 +427,8 @@ class PlayMode(GameMode):
         
         return None
 
-    def create_player(self):
-        player = self.create_game_object(Player, CELL_SIZE // 2 - 1, PLAYER_SPEED, self.check_collision)
+    def create_player(self, color):
+        player = self.create_game_object(Player, CELL_SIZE // 2 - 1, PLAYER_SPEED, self.check_collision, color)
         return player
 
     def create_coins(self, num_coins):
@@ -727,6 +732,45 @@ class LevelEditorMode(GameMode):
         if 0 <= cell_x < MAZE_WIDTH and 0 <= cell_y < MAZE_HEIGHT:
             self.level_manager.get_current_level().maze[cell_y][cell_x] = self.selected_item
 
+class CharacterCustomizationMode(GameMode):
+    def __init__(self, game):
+        super().__init__(game)
+        self.font = pygame.font.Font(None, 36)
+        self.title_font = pygame.font.Font(None, 48)
+        self.colors = [GOLD, RED, GREEN, BLUE, WHITE, CYAN, MAGENTA]
+        self.color_index = 0
+
+    def update(self):
+        pass
+
+    def render(self, screen, interpolation):
+        screen.fill(BLACK)
+
+        title = self.title_font.render("Character Customization", True, WHITE)
+        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 6))
+        screen.blit(title, title_rect)
+
+        color_text = self.font.render("Press SPACE to change color", True, WHITE)
+        color_rect = color_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
+        screen.blit(color_text, color_rect)
+
+        # Draw example player
+        pygame.draw.circle(screen, self.colors[self.color_index], (WIDTH // 2, HEIGHT // 2 + 50), CELL_SIZE // 2 - 1)
+
+        back_text = self.font.render("Press ESC to return to menu", True, WHITE)
+        back_rect = back_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
+        screen.blit(back_text, back_rect)
+
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                self.color_index = (self.color_index + 1) % len(self.colors)
+            elif event.key == pygame.K_ESCAPE:
+                self.game.set_mode("menu")
+
+    def get_player_color(self):
+        return self.colors[self.color_index]
+
 class Game:
     def __init__(self):
         pygame.init()
@@ -741,11 +785,15 @@ class Game:
         self.offset_y = SCORE_AREA_HEIGHT
         self.running = True
         
-        self.modes = {
-            "menu": MenuMode(self),
-            "play": PlayMode(self, self.level_manager),
-            "level_editor": LevelEditorMode(self, self.level_manager)
-        }
+        # Initialize modes dictionary
+        self.modes = {}
+        
+        # Create instances of game modes
+        self.modes["menu"] = MenuMode(self)
+        self.modes["character_customization"] = CharacterCustomizationMode(self)
+        self.modes["level_editor"] = LevelEditorMode(self, self.level_manager)
+        self.modes["play"] = PlayMode(self, self.level_manager)
+        
         self.current_mode = self.modes["menu"]
 
         # Fixed timestep variables
