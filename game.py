@@ -224,6 +224,7 @@ class Game:
         self.game_over = False
         self.level_complete = False
         self.is_drawing = False  # New attribute to track if we're currently drawing
+        self.show_help = False  # New attribute to control help overlay visibility
 
     def load_or_generate_maze(self):
         if os.path.exists(self.maze_file):
@@ -486,21 +487,47 @@ class Game:
                     elif cell == 'D':
                         pygame.draw.rect(self.screen, CYAN, rect)
             
-            dev_text = self.font.render("Dev Mode: P-Player, N-Enemy, S-Star, M-Diamond, W-Wall, C-Clear, SPACE to save, L to load, ESC to exit", True, BLACK)
+            dev_text = self.font.render("Dev Mode: Press H for help", True, BLACK)
             dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_text, dev_rect)
 
-            selected_text = self.font.render(f"Selected: {self.dev_selected_item if self.dev_selected_item != ' ' else 'Empty'}", True, BLACK)
-            selected_rect = selected_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 40))
-            self.screen.blit(selected_text, selected_rect)
-
-            draw_text = self.font.render("Click and drag to draw", True, BLACK)
-            draw_rect = draw_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 70))
-            self.screen.blit(draw_text, draw_rect)
+            if self.show_help:
+                self.draw_help_overlay()
         else:
             dev_hint = self.font.render("Press D for Dev Mode, L to Load Maze", True, BLACK)
             dev_hint_rect = dev_hint.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
             self.screen.blit(dev_hint, dev_hint_rect)
+
+    def draw_help_overlay(self):
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))  # Semi-transparent black background
+
+        help_text = [
+            "Dev Mode Hotkeys:",
+            "P - Place Player",
+            "N - Place Enemy",
+            "S - Place Star",
+            "M - Place Diamond",
+            "W - Place Wall",
+            "C - Clear/Empty cell",
+            "SPACE - Save maze",
+            "L - Load maze",
+            "E - Erase entire maze",
+            "ESC - Exit Dev Mode",
+            "",
+            "Click and drag to draw",
+            "",
+            "Press H to close this help"
+        ]
+
+        y_offset = 50
+        for line in help_text:
+            text_surface = self.font.render(line, True, WHITE)
+            text_rect = text_surface.get_rect(center=(WIDTH // 2, y_offset))
+            overlay.blit(text_surface, text_rect)
+            y_offset += 30
+
+        self.screen.blit(overlay, (0, 0))
 
     def save_maze_to_file(self):
         maze_data = {
@@ -546,7 +573,9 @@ class Game:
                     if event.key == pygame.K_d:
                         self.toggle_dev_mode()
                     elif self.dev_mode:
-                        if event.key == pygame.K_SPACE:
+                        if event.key == pygame.K_h:
+                            self.show_help = not self.show_help
+                        elif event.key == pygame.K_SPACE:
                             self.save_dev_maze()
                         elif event.key == pygame.K_e:
                             self.erase_dev_maze()
