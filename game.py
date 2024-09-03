@@ -12,7 +12,7 @@ WIDTH, HEIGHT = 800, 680
 CELL_SIZE = 20
 MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
-ENEMY_SPEED = CELL_SIZE // 5
+ENEMY_SPEED = CELL_SIZE // 20
 PLAYER_SPEED = CELL_SIZE // 4
 ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)
 DEV_MODE = True
@@ -128,6 +128,10 @@ class Star(GameObject):
         super().__init__(x, y, radius)
 
     def draw(self, screen, offset_x, offset_y):
+        # Draw white background circle
+        pygame.draw.rect(screen, WHITE, (int(self.x + offset_x - self.radius), int(self.y + offset_y - self.radius), self.radius * 2, self.radius * 2))
+        
+        # Draw star
         pygame.draw.polygon(screen, GOLD, [
             (self.x + offset_x, self.y - self.radius + offset_y),
             (self.x + self.radius * 0.3 + offset_x, self.y + self.radius * 0.4 + offset_y),
@@ -149,6 +153,10 @@ class Diamond(GameObject):
         self.radius = CELL_SIZE // 2
 
     def draw(self, screen, offset_x, offset_y):
+        # Draw white background circle
+        pygame.draw.rect(screen, WHITE, (int(self.x + offset_x - self.radius), int(self.y + offset_y - self.radius), self.radius * 2, self.radius * 2))
+        
+        # Draw diamond
         points = [
             (self.x + offset_x, self.y - self.radius + offset_y),
             (self.x + self.radius + offset_x, self.y + offset_y),
@@ -346,12 +354,16 @@ class Game:
                                     self.star.radius * 2, self.star.radius * 2)
             if player_rect.colliderect(star_rect):
                 self.level_complete = True
+                star_x, star_y = int(self.star.x // CELL_SIZE), int(self.star.y // CELL_SIZE)
+                self.maze[star_y] = self.maze[star_y][:star_x] + ' ' + self.maze[star_y][star_x+1:]
                 self.star = None
 
         for diamond in self.diamonds[:]:
             diamond_rect = pygame.Rect(diamond.x - diamond.radius, diamond.y - diamond.radius, 
                                        diamond.radius * 2, diamond.radius * 2)
             if player_rect.colliderect(diamond_rect):
+                diamond_x, diamond_y = int(diamond.x // CELL_SIZE), int(diamond.y // CELL_SIZE)
+                self.maze[diamond_y] = self.maze[diamond_y][:diamond_x] + ' ' + self.maze[diamond_y][diamond_x+1:]
                 self.diamonds.remove(diamond)
                 self.score += 10000
 
@@ -416,7 +428,7 @@ class Game:
 
         for y, row in enumerate(self.maze):
             for x, cell in enumerate(row):
-                if cell == ' ' or cell == 'S':
+                if cell == ' ' or cell == 'S' or cell == '*' or cell == 'D':
                     pygame.draw.rect(self.screen, WHITE, (x * CELL_SIZE + self.offset_x, y * CELL_SIZE + self.offset_y, CELL_SIZE, CELL_SIZE))
 
         for coin in self.coins:
