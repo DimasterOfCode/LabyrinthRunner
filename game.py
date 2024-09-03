@@ -165,34 +165,6 @@ class Diamond(GameObject):
         ]
         pygame.draw.polygon(screen, CYAN, points)
 
-# New MazeGenerator class
-class MazeGenerator:
-    @staticmethod
-    def generate_maze(width, height):
-        maze = [['X' for _ in range(width)] for _ in range(height)]
-        
-        def carve_path(x, y):
-            maze[y][x] = ' '
-            directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-            random.shuffle(directions)
-            for dx, dy in directions:
-                nx, ny = x + dx, y + dy
-                if 0 <= nx < width and 0 <= ny < height and maze[ny][nx] == 'X':
-                    maze[ny][nx] = ' '
-                    return nx, ny
-            return None
-
-        x, y = random.randrange(1, width-1), random.randrange(1, height-1)
-        maze[y][x] = 'S'
-        
-        while True:
-            next_pos = carve_path(x, y)
-            if next_pos is None:
-                break
-            x, y = next_pos
-        
-        return [''.join(row) for row in maze]
-
 # Refactored Game class
 class Game:
     def __init__(self):
@@ -208,7 +180,6 @@ class Game:
         self.dev_selected_item = ' '  # Default to empty space
         self.maze_file = "custom_maze.json"
         
-        self.maze_generator = MazeGenerator()
         self.load_or_generate_maze()
 
         self.player = self.create_player()
@@ -230,18 +201,22 @@ class Game:
         if os.path.exists(self.maze_file):
             self.load_maze_from_file()
         else:
-            self.maze = self.maze_generator.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+            print("No maze file found. Entering Dev Mode.")
+            self.dev_mode = True
+            self.init_dev_mode()
 
     def init_dev_mode(self):
         if self.dev_maze is None:
             self.dev_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
             self.dev_maze[1][1] = 'S'
             self.dev_maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
+        self.maze = [''.join(row) for row in self.dev_maze]
         self.coins = []
         self.enemy = self.create_enemy()
         self.star = None
         self.diamonds = []
         self.score = 0
+        self.player = self.create_player()
 
     def init_level(self):
         self.coins = self.create_coins(0)
@@ -370,7 +345,7 @@ class Game:
 
     def next_level(self):
         self.level += 1
-        self.maze = self.maze_generator.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
+        self.load_or_generate_maze()
         self.player = self.create_player()
         self.init_level()
         self.level_complete = False
@@ -413,8 +388,8 @@ class Game:
         if self.dev_mode:
             self.init_dev_mode()
         else:
-            self.maze = self.maze_generator.generate_maze(MAZE_WIDTH, MAZE_HEIGHT)
-            self.init_level()
+            self.load_maze_from_file()
+        self.init_level()
         self.player = self.create_player()
         self.enemy = self.create_enemy()
 
