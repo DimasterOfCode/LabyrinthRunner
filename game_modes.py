@@ -331,6 +331,7 @@ class PlayMode(GameMode):
                 star_x, star_y = int(self.star.x // CELL_SIZE), int(self.star.y // CELL_SIZE)
                 self.get_current_maze()[star_y][star_x] = ' '
                 self.star = None
+                self.game.play_star_consume_sound()  # Add this line to play the sound
 
         for diamond in self.diamonds[:]:
             diamond_rect = pygame.Rect(diamond.x - diamond.radius, 
@@ -355,6 +356,7 @@ class PlayMode(GameMode):
                                      self.enemy.radius * 2)
             if player_rect.colliderect(enemy_rect):
                 self.game_over = True
+                self.game.play_game_over_sound()  # Play the game over sound
 
     def check_level_complete(self):
         if not self.coins and not self.star and not self.diamonds:
