@@ -5,6 +5,7 @@ from collections import deque
 import time
 import json
 import os
+import pygame.gfxdraw
 
 # Constants
 FPS = 60
@@ -178,14 +179,14 @@ class Game:
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Circle Maze Game")
-        self.clock = pygame.time.Clock()  # Add this line
+        self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         
         self.level_manager = LevelManager("levels.json")
         self.dev_mode = DevMode(self)
         self.is_dev_mode = False
         self.show_help = False
-        self.is_drawing = False  # Add this line
+        self.is_drawing = False
 
         self.load_or_generate_levels()
         self.init_game_objects()
@@ -194,6 +195,9 @@ class Game:
         self.offset_y = SCORE_AREA_HEIGHT
         self.running = True
         
+        self.state = "menu"
+        self.menu = Menu(self)
+
     def load_or_generate_levels(self):
         if os.path.exists(self.level_manager.levels_file):
             self.level_manager.load_levels_from_file()
@@ -353,15 +357,15 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            elif self.state == "menu":
+                self.menu.handle_event(event)
             else:
                 self.handle_input(event)
 
     def handle_input(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                self.running = False
-            elif event.key == pygame.K_d:
-                self.toggle_dev_mode()
+                self.return_to_menu()
             elif self.is_dev_mode:
                 if event.key == pygame.K_h:
                     self.show_help = not self.show_help
@@ -411,66 +415,75 @@ class Game:
                 self.dev_mode.handle_input(event.pos)
 
     def update(self):
-        if not self.game_over and not self.is_dev_mode and not self.level_complete:
-            self.player.update()
-            self.update_enemy()
-            self.collect_coins()
-            self.check_enemy_collision()
+        if self.state == "play":
+            if not self.game_over and not self.is_dev_mode and not self.level_complete:
+                self.player.update()
+                self.update_enemy()
+                self.collect_coins()
+                self.check_enemy_collision()
 
-        # Check if we've completed all levels
-        if self.level_complete and self.level_manager.current_level_index == len(self.level_manager.levels) - 1:
-            self.level_manager.current_level_index = 0
-            self.init_game_objects()
+            # Check if we've completed all levels
+            if self.level_complete and self.level_manager.current_level_index == len(self.level_manager.levels) - 1:
+                self.level_manager.current_level_index = 0
+                self.init_game_objects()
 
     def draw(self):
         self.screen.fill(GREEN)
-        pygame.draw.rect(self.screen, LIGHT_GREEN, (0, 0, WIDTH, SCORE_AREA_HEIGHT))
-        pygame.draw.line(self.screen, BLACK, (0, SCORE_AREA_HEIGHT), (WIDTH, SCORE_AREA_HEIGHT), 2)
+        
+        if self.state == "menu":
+            self.menu.draw(self.screen)
+        elif self.state == "play":
+            pygame.draw.rect(self.screen, LIGHT_GREEN, (0, 0, WIDTH, SCORE_AREA_HEIGHT))
+            pygame.draw.line(self.screen, BLACK, (0, SCORE_AREA_HEIGHT), (WIDTH, SCORE_AREA_HEIGHT), 2)
 
-        for y, row in enumerate(self.level_manager.get_current_level().maze):
-            for x, cell in enumerate(row):
-                if cell == ' ' or cell == 'S' or cell == '*' or cell == 'D':
-                    pygame.draw.rect(self.screen, WHITE, (x * CELL_SIZE + self.offset_x, y * CELL_SIZE + self.offset_y, CELL_SIZE, CELL_SIZE))
+            for y, row in enumerate(self.level_manager.get_current_level().maze):
+                for x, cell in enumerate(row):
+                    if cell == ' ' or cell == 'S' or cell == '*' or cell == 'D':
+                        pygame.draw.rect(self.screen, WHITE, (x * CELL_SIZE + self.offset_x, y * CELL_SIZE + self.offset_y, CELL_SIZE, CELL_SIZE))
 
-        for coin in self.coins:
-            coin.draw(self.screen, self.offset_x, self.offset_y)
+            for coin in self.coins:
+                coin.draw(self.screen, self.offset_x, self.offset_y)
 
-        if self.enemy:
-            self.enemy.draw(self.screen, self.offset_x, self.offset_y)
-            if not self.enemy.should_chase():
-                countdown = int(self.enemy.chase_delay - (time.time() - self.enemy.start_time))
-                countdown_text = self.font.render(f"Chase starts in: {countdown}", True, RED)
-                countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
-                self.screen.blit(countdown_text, countdown_rect)
+            if self.enemy:
+                self.enemy.draw(self.screen, self.offset_x, self.offset_y)
+                if not self.enemy.should_chase():
+                    countdown = int(self.enemy.chase_delay - (time.time() - self.enemy.start_time))
+                    countdown_text = self.font.render(f"Chase starts in: {countdown}", True, RED)
+                    countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
+                    self.screen.blit(countdown_text, countdown_rect)
 
-        if self.player:
-            self.player.draw(self.screen, self.offset_x, self.offset_y)
+            if self.player:
+                self.player.draw(self.screen, self.offset_x, self.offset_y)
 
-        if self.star:
-            self.star.draw(self.screen, self.offset_x, self.offset_y)
+            if self.star:
+                self.star.draw(self.screen, self.offset_x, self.offset_y)
 
-        for diamond in self.diamonds:
-            diamond.draw(self.screen, self.offset_x, self.offset_y)
+            for diamond in self.diamonds:
+                diamond.draw(self.screen, self.offset_x, self.offset_y)
 
-        if self.game_over:
-            game_over_text = self.font.render("GAME OVER", True, RED)
-            game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-            self.screen.blit(game_over_text, game_over_rect)
+            if self.game_over:
+                game_over_text = self.font.render("GAME OVER", True, RED)
+                game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+                self.screen.blit(game_over_text, game_over_rect)
 
-        score_text = self.font.render(f"Score: {self.score}", True, BLACK)
-        score_rect = score_text.get_rect(midleft=(10, SCORE_AREA_HEIGHT // 2))
-        self.screen.blit(score_text, score_rect)
+            score_text = self.font.render(f"Score: {self.score}", True, BLACK)
+            score_rect = score_text.get_rect(midleft=(10, SCORE_AREA_HEIGHT // 2))
+            self.screen.blit(score_text, score_rect)
 
-        level_text = self.font.render(f"Level: {self.level_manager.get_current_level().level_number}", True, BLACK)
-        level_rect = level_text.get_rect(midright=(WIDTH - 10, SCORE_AREA_HEIGHT // 2))
-        self.screen.blit(level_text, level_rect)
+            level_text = self.font.render(f"Level: {self.level_manager.get_current_level().level_number}", True, BLACK)
+            level_rect = level_text.get_rect(midright=(WIDTH - 10, SCORE_AREA_HEIGHT // 2))
+            self.screen.blit(level_text, level_rect)
 
-        if self.level_complete:
-            level_complete_text = self.font.render("Level Complete! Press N for next level", True, GOLD)
-            level_complete_rect = level_complete_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-            self.screen.blit(level_complete_text, level_complete_rect)
+            if self.level_complete:
+                level_complete_text = self.font.render("Level Complete! Press N for next level", True, GOLD)
+                level_complete_rect = level_complete_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+                self.screen.blit(level_complete_text, level_complete_rect)
 
-        if self.is_dev_mode:
+            quit_text = self.font.render("Press ESC to return to menu", True, BLACK)
+            quit_rect = quit_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
+            self.screen.blit(quit_text, quit_rect)
+
+        elif self.state == "level_editor":
             for y, row in enumerate(self.level_manager.get_current_level().maze):
                 for x, cell in enumerate(row):
                     rect = pygame.Rect(x * CELL_SIZE + self.offset_x, y * CELL_SIZE + self.offset_y, CELL_SIZE, CELL_SIZE)
@@ -488,15 +501,15 @@ class Game:
                         pygame.draw.rect(self.screen, CYAN, rect)
             
             dev_text = self.font.render("Dev Mode: Press H for help", True, BLACK)
-            dev_rect = dev_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
+            dev_rect = dev_text.get_rect(midtop=(WIDTH // 2, 10))
             self.screen.blit(dev_text, dev_rect)
 
             if self.show_help:
                 self.draw_help_overlay()
-        else:
-            dev_hint = self.font.render("Press D for Dev Mode, L to Load Maze", True, BLACK)
-            dev_hint_rect = dev_hint.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
-            self.screen.blit(dev_hint, dev_hint_rect)
+
+            quit_text = self.font.render("Press ESC to return to menu", True, BLACK)
+            quit_rect = quit_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
+            self.screen.blit(quit_text, quit_rect)
 
     def draw_help_overlay(self):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -564,6 +577,62 @@ class Game:
         self.level_manager.prev_level()
         self.init_game_objects()
 
+    def start_game(self):
+        self.state = "play"
+        self.init_game_objects()
+
+    def start_level_editor(self):
+        self.state = "level_editor"
+        self.is_dev_mode = True
+        self.init_dev_mode()
+
+    def return_to_menu(self):
+        self.state = "menu"
+        self.is_dev_mode = False
+        self.game_over = False
+        self.level_complete = False
+        self.show_help = False
+        self.is_drawing = False
+        # Reset the game objects
+        self.init_game_objects()
+
+class Menu:
+    def __init__(self, game):
+        self.game = game
+        self.font = pygame.font.Font(None, 48)
+        self.title_font = pygame.font.Font(None, 72)
+        self.options = ["Play", "Level Editor"]
+        self.selected = 0
+
+    def draw(self, screen):
+        screen.fill((50, 50, 50))  # Dark gray background
+
+        title = self.title_font.render("Circle Maze Game", True, WHITE)
+        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 4))
+        screen.blit(title, title_rect)
+
+        for i, option in enumerate(self.options):
+            color = GOLD if i == self.selected else WHITE
+            text = self.font.render(option, True, color)
+            rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
+            
+            # Draw a rounded rectangle behind the text
+            pygame.draw.rect(screen, GREEN, rect.inflate(20, 10), border_radius=10)
+            pygame.draw.rect(screen, BLACK, rect.inflate(20, 10), 2, border_radius=10)
+            
+            screen.blit(text, rect)
+
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                self.selected = (self.selected - 1) % len(self.options)
+            elif event.key == pygame.K_DOWN:
+                self.selected = (self.selected + 1) % len(self.options)
+            elif event.key == pygame.K_RETURN:
+                if self.selected == 0:
+                    self.game.start_game()
+                elif self.selected == 1:
+                    self.game.start_level_editor()
 
 class LevelManager:
     def __init__(self, levels_file):
