@@ -14,11 +14,11 @@ WIDTH, HEIGHT = 800, 680
 CELL_SIZE = 20
 MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
-ENEMY_SPEED = CELL_SIZE // 20
+ENEMY_SPEED = CELL_SIZE // 6
 PLAYER_SPEED = CELL_SIZE // 4
 ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)
 DEV_MODE = True
-ENEMY_CHASE_DELAY = 2
+ENEMY_CHASE_DELAY = 3
 COIN_RADIUS = CELL_SIZE // 7  # New constant for coin radius
 
 # Colors
@@ -137,7 +137,7 @@ class Player(MovableObject):
         super().__init__(x, y, radius, speed)
         self.collision_checker = collision_checker
         self.direction = None
-        self.color = LIGHT_BROWN  # Add this line to define the color
+        self.color = GOLD  # Changed to match the star's color
 
     def move(self, dx, dy):
         self.x += dx * self.speed
@@ -217,7 +217,34 @@ class Enemy(MovableObject):
     def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
         x = interpolated_x if interpolated_x is not None else self.x
         y = interpolated_y if interpolated_y is not None else self.y
+        
+        # Draw the main body
         pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
+        
+        # Draw angry eyes
+        eye_radius = max(2, self.radius // 5)
+        eye_offset = self.radius // 3
+        pygame.draw.circle(screen, BLACK, (int(x - eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
+        pygame.draw.circle(screen, BLACK, (int(x + eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
+        
+        # Draw angry eyebrows
+        eyebrow_length = self.radius // 2
+        eyebrow_thickness = max(1, self.radius // 10)
+        pygame.draw.line(screen, BLACK, 
+                         (int(x - eye_offset - eyebrow_length//2 + offset_x), int(y - eye_offset - eye_radius + offset_y)),
+                         (int(x - eye_offset + eyebrow_length//2 + offset_x), int(y - eye_offset - eye_radius - eyebrow_thickness + offset_y)),
+                         eyebrow_thickness)
+        pygame.draw.line(screen, BLACK, 
+                         (int(x + eye_offset - eyebrow_length//2 + offset_x), int(y - eye_offset - eye_radius - eyebrow_thickness + offset_y)),
+                         (int(x + eye_offset + eyebrow_length//2 + offset_x), int(y - eye_offset - eye_radius + offset_y)),
+                         eyebrow_thickness)
+        
+        # Draw angry mouth
+        mouth_width = self.radius
+        mouth_height = self.radius // 3
+        pygame.draw.arc(screen, BLACK, 
+                        (int(x - mouth_width//2 + offset_x), int(y + offset_y), mouth_width, mouth_height),
+                        3.14, 2 * 3.14, max(1, self.radius // 10))
 
     def should_chase(self):
         return time.time() - self.start_time >= self.chase_delay
@@ -294,16 +321,16 @@ class MenuMode(GameMode):
         self.selected = 0
 
     def render(self, screen, interpolation):  # Add interpolation parameter here
-        screen.fill((50, 50, 50))  # Dark gray background
+        screen.fill(BLACK)  # Dark gray background
 
-        title = self.title_font.render("Circle Maze Game", True, WHITE)
-        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 4))
+        title = self.title_font.render("Labyrinth Runner", True, WHITE)
+        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 6))
         screen.blit(title, title_rect)
 
         for i, option in enumerate(self.options):
             color = GOLD if i == self.selected else WHITE
             text = self.font.render(option, True, color)
-            rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
+            rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2.5 + i * 60))
             
             pygame.draw.rect(screen, GREEN, rect.inflate(20, 10), border_radius=10)
             pygame.draw.rect(screen, BLACK, rect.inflate(20, 10), 2, border_radius=10)
