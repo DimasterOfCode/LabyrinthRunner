@@ -430,7 +430,7 @@ class Game:
         else:
             print("No levels file found. Entering Dev Mode.")
             self.is_dev_mode = True
-            self.init_dev_mode()
+            self.dev_mode.init_dev_mode()
 
     def init_game_objects(self):
         self.player = self.create_player()
@@ -534,7 +534,7 @@ class Game:
             if event.key == pygame.K_ESCAPE:
                 self.return_to_menu()
             elif self.is_dev_mode:
-                self.handle_dev_mode_input(event)
+                self.dev_mode.handle_dev_mode_input(event)
             elif self.level_complete:
                 if event.key == pygame.K_n:
                     self.next_level()
@@ -550,32 +550,6 @@ class Game:
                 self.is_drawing = False
             elif event.type == pygame.MOUSEMOTION and self.is_drawing:
                 self.dev_mode.handle_input(event.pos)
-
-    def handle_dev_mode_input(self, event):
-        if event.key == pygame.K_h:
-            self.show_help = not self.show_help
-        elif event.key == pygame.K_SPACE:
-            self.save_current_level()
-        elif event.key == pygame.K_e:
-            self.dev_mode.erase_maze()
-        elif event.key == pygame.K_n:
-            self.level_manager.new_level()
-        elif event.key == pygame.K_LEFTBRACKET:
-            self.level_manager.prev_level()
-        elif event.key == pygame.K_RIGHTBRACKET:
-            self.level_manager.next_level()
-        elif event.key == pygame.K_p:
-            self.dev_mode.selected_item = 'S'  # Start/Player
-        elif event.key == pygame.K_n:
-            self.dev_mode.selected_item = 'E'  # Enemy
-        elif event.key == pygame.K_s:
-            self.dev_mode.selected_item = '*'  # Star
-        elif event.key == pygame.K_m:
-            self.dev_mode.selected_item = 'D'  # Diamond
-        elif event.key == pygame.K_w:
-            self.dev_mode.selected_item = 'X'  # Wall
-        elif event.key == pygame.K_c:
-            self.dev_mode.selected_item = ' '  # Clear/Empty
 
     def handle_player_input(self, event):
         if event.key == pygame.K_RIGHT:
@@ -594,18 +568,9 @@ class Game:
     def toggle_dev_mode(self):
         self.is_dev_mode = not self.is_dev_mode
         if self.is_dev_mode:
-            self.init_dev_mode()
+            self.dev_mode.init_dev_mode()
         else:
             self.level_manager.load_levels_from_file()
-        self.init_game_objects()
-
-    def init_dev_mode(self):
-        if not self.level_manager.levels:
-            self.level_manager.levels.append(Level([['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)], 1))
-        if 'S' not in [cell for row in self.level_manager.get_current_level().maze for cell in row]:
-            self.level_manager.get_current_level().maze[1][1] = 'S'
-        if 'E' not in [cell for row in self.level_manager.get_current_level().maze for cell in row]:
-            self.level_manager.get_current_level().maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
         self.init_game_objects()
 
     def next_level(self):
@@ -623,7 +588,7 @@ class Game:
     def start_level_editor(self):
         self.state = "level_editor"
         self.is_dev_mode = True
-        self.init_dev_mode()
+        self.dev_mode.init_dev_mode()
 
     def return_to_menu(self):
         self.state = "menu"
@@ -732,6 +697,32 @@ class DevMode:
                 self.remove_duplicate(self.selected_item, x, y)
             self.game.level_manager.get_current_level().maze[y][x] = self.selected_item
 
+    def handle_dev_mode_input(self, event):
+        if event.key == pygame.K_h:
+            self.game.show_help = not self.game.show_help
+        elif event.key == pygame.K_SPACE:
+            self.game.save_current_level()
+        elif event.key == pygame.K_e:
+            self.erase_maze()
+        elif event.key == pygame.K_n:
+            self.game.level_manager.new_level()
+        elif event.key == pygame.K_LEFTBRACKET:
+            self.game.level_manager.prev_level()
+        elif event.key == pygame.K_RIGHTBRACKET:
+            self.game.level_manager.next_level()
+        elif event.key == pygame.K_p:
+            self.selected_item = 'S'  # Start/Player
+        elif event.key == pygame.K_n:
+            self.selected_item = 'E'  # Enemy
+        elif event.key == pygame.K_s:
+            self.selected_item = '*'  # Star
+        elif event.key == pygame.K_m:
+            self.selected_item = 'D'  # Diamond
+        elif event.key == pygame.K_w:
+            self.selected_item = 'X'  # Wall
+        elif event.key == pygame.K_c:
+            self.selected_item = ' '  # Clear/Empty
+
     def remove_duplicate(self, char, new_x, new_y):
         maze = self.game.level_manager.get_current_level().maze
         for y, row in enumerate(maze):
@@ -742,6 +733,15 @@ class DevMode:
     def erase_maze(self):
         self.game.level_manager.get_current_level().maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
         print("Maze erased")
+
+    def init_dev_mode(self):
+        if not self.game.level_manager.levels:
+            self.game.level_manager.levels.append(Level([['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)], 1))
+        if 'S' not in [cell for row in self.game.level_manager.get_current_level().maze for cell in row]:
+            self.game.level_manager.get_current_level().maze[1][1] = 'S'
+        if 'E' not in [cell for row in self.game.level_manager.get_current_level().maze for cell in row]:
+            self.game.level_manager.get_current_level().maze[MAZE_HEIGHT-2][MAZE_WIDTH-2] = 'E'
+        self.game.init_game_objects()
 
 if __name__ == "__main__":
     game = Game()
