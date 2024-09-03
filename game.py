@@ -12,12 +12,12 @@ WIDTH, HEIGHT = 800, 680
 CELL_SIZE = 20
 MAZE_WIDTH, MAZE_HEIGHT = 40, 30
 SCORE_AREA_HEIGHT = 40
-ENEMY_SPEED = CELL_SIZE // 6
+ENEMY_SPEED = CELL_SIZE // 5
 PLAYER_SPEED = CELL_SIZE // 4
 ESCAPE_ROUTES = max(100, MAZE_WIDTH // 10)
 DEV_MODE = True
 ENEMY_CHASE_DELAY = 2
-COIN_RADIUS = CELL_SIZE // 5  # New constant for coin radius
+COIN_RADIUS = CELL_SIZE // 7  # New constant for coin radius
 
 # Colors
 WHITE = (255, 255, 255)
@@ -29,6 +29,7 @@ LIGHT_BROWN = (205, 133, 63)
 RED = (255, 0, 0)
 GOLD = (255, 215, 0)
 CYAN = (0, 255, 255)  # New color for diamonds
+COIN_COLOR = YELLOW  # New constant for coin color
 
 # New base classes without ABC
 class GameObject:
@@ -91,7 +92,7 @@ class Coin(GameObject):
         self.radius = COIN_RADIUS
 
     def draw(self, screen, offset_x, offset_y):
-        pygame.draw.circle(screen, YELLOW, (self.x + offset_x, self.y + offset_y), self.radius)
+        pygame.draw.circle(screen, COIN_COLOR, (self.x + offset_x, self.y + offset_y), self.radius)
 
 class Enemy(MovableObject):
     SYMBOL = 'E'
