@@ -185,14 +185,14 @@ class Game:
         self.dev_mode = False
         self.dev_maze = None
         self.dev_selected_item = ' '  # Default to empty space
-        self.maze_file = "custom_maze.json"
+        
+        self.levels_file = "levels.json"
         
         # Add these new attributes
         self.levels = []
         self.current_level_index = 0
-        self.levels_file = "levels.json"
         
-        self.load_or_generate_maze()  # We'll modify this method in the next step
+        self.load_or_generate_levels()
 
         self.player = self.create_player()
         if self.player is None:
@@ -219,7 +219,7 @@ class Game:
         self.init_level()
         print(f"Levels loaded from {self.levels_file}")
 
-    def load_or_generate_maze(self):
+    def load_or_generate_levels(self):
         if os.path.exists(self.levels_file):
             self.load_levels_from_file()
         else:
@@ -432,14 +432,14 @@ class Game:
         self.player = self.create_player()
         self.enemy = self.create_enemy()
         self.init_level()
-        self.save_maze_to_file()
+        self.save_levels_to_file()
 
     def toggle_dev_mode(self):
         self.dev_mode = not self.dev_mode
         if self.dev_mode:
             self.init_dev_mode()
         else:
-            self.load_maze_from_file()
+            self.load_levels_from_file()
         self.init_level()
         self.player = self.create_player()
         self.enemy = self.create_enemy()
@@ -560,30 +560,6 @@ class Game:
             y_offset += 30
 
         self.screen.blit(overlay, (0, 0))
-
-    def save_maze_to_file(self):
-        maze_data = {
-            "maze": self.dev_maze,
-            "level": self.level,
-            "score": self.score
-        }
-        with open(self.maze_file, 'w') as f:
-            json.dump(maze_data, f)
-        print(f"Maze saved to {self.maze_file}")
-
-    def load_maze_from_file(self):
-        with open(self.maze_file, 'r') as f:
-            maze_data = json.load(f)
-        self.dev_maze = maze_data["maze"]
-        self.level = maze_data["level"]
-        self.score = maze_data["score"]
-        self.maze = [''.join(row) for row in self.dev_maze]
-        self.player = self.create_player()
-        self.enemy = self.create_enemy()
-        self.star = self.create_star()
-        self.coins = self.create_coins(0)
-        self.diamonds = self.create_diamonds()
-        print(f"Maze loaded from {self.maze_file}")
 
     def save_current_level(self):
         if self.current_level_index < len(self.levels):
