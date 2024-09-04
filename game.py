@@ -23,6 +23,9 @@ class Game:
         self.level_manager = LevelManager("levels.json")
         self.level_manager.load_or_generate_levels()
 
+        # Initialize the sound manager
+        self.sound_manager = SoundManager()
+
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
         self.offset_y = SCORE_AREA_HEIGHT
         self.running = True
@@ -37,9 +40,6 @@ class Game:
         self.modes["play"] = PlayMode(self, self.level_manager)
         
         self.current_mode = self.modes["menu"]
-
-        # Initialize the sound manager
-        self.sound_manager = SoundManager()
 
         # Fixed timestep variables
         self.TICKS_PER_SECOND = 60
@@ -59,7 +59,7 @@ class Game:
     def set_mode(self, mode_name):
         self.current_mode = self.modes[mode_name]
         if mode_name == "play":
-            self.modes["play"].init_game_objects()
+            self.modes["play"].start_level()  # Changed this line
 
     def run(self):
         next_game_tick = pygame.time.get_ticks()

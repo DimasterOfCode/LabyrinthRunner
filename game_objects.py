@@ -76,42 +76,22 @@ class Coin(GameObject):
     def draw(self, screen, offset_x, offset_y):
         pygame.draw.circle(screen, COIN_COLOR, (self.x + offset_x, self.y + offset_y), self.radius)
 
-class Enemy(MovableObject):
+class Enemy(GameObject):
     SYMBOL = 'E'
-    def __init__(self, x, y, radius, speed, path_finder):
-        super().__init__(x, y, radius, speed)
-        self.path_finder = path_finder
+    def __init__(self, x, y, radius, speed, find_path_func):
+        super().__init__(x, y, radius)
+        self.speed = speed
+        self.find_path_func = find_path_func
         self.path = []
-        self.start_time = time.time()
-        self.chase_delay = ENEMY_CHASE_DELAY
-        self.color = RED
         self.target = None
+        self.color = RED
+        self.dx = 0  # Add this line
+        self.dy = 0  # Add this line
 
     def update(self, player_pos):
-        if self.should_chase():
-            if not self.path or self.target != player_pos:
-                self.target = player_pos
-                start = (int(self.x // CELL_SIZE), int(self.y // CELL_SIZE))
-                goal = (int(player_pos[0] // CELL_SIZE), int(player_pos[1] // CELL_SIZE))
-                self.path = self.path_finder(start, goal)
-                if self.path:
-                    self.path.pop(0)  # Remove the starting position
-
-            if self.path:
-                next_x, next_y = self.path[0]
-                target_x = next_x * CELL_SIZE + CELL_SIZE // 2
-                target_y = next_y * CELL_SIZE + CELL_SIZE // 2
-
-                dx = target_x - self.x
-                dy = target_y - self.y
-                distance = ((dx ** 2) + (dy ** 2)) ** 0.5
-
-                if distance < self.speed:
-                    self.x, self.y = target_x, target_y
-                    self.path.pop(0)
-                else:
-                    self.x += (dx / distance) * self.speed
-                    self.y += (dy / distance) * self.speed
+        if not self.path:
+            self.set_new_path(player_pos)
+        self.move_along_path()
 
     def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
         x = interpolated_x if interpolated_x is not None else self.x
@@ -145,8 +125,35 @@ class Enemy(MovableObject):
                         (int(x - mouth_width//2 + offset_x), int(y + offset_y), mouth_width, mouth_height),
                         3.14, 2 * 3.14, max(1, self.radius // 10))
 
-    def should_chase(self):
-        return time.time() - self.start_time >= self.chase_delay
+    def set_new_path(self, player_pos):
+        start = (int(self.x // CELL_SIZE), int(self.y // CELL_SIZE))
+        goal = (int(player_pos[0] // CELL_SIZE), int(player_pos[1] // CELL_SIZE))
+        self.path = self.find_path_func(start, goal)
+        if self.path:
+            self.path.pop(0)  # Remove the starting position
+
+    def move_along_path(self):
+        if self.path:
+            next_x, next_y = self.path[0]
+            target_x = next_x * CELL_SIZE + CELL_SIZE // 2
+            target_y = next_y * CELL_SIZE + CELL_SIZE // 2
+
+            dx = target_x - self.x
+            dy = target_y - self.y
+            distance = ((dx ** 2) + (dy ** 2)) ** 0.5
+
+            if distance < self.speed:
+                self.x, self.y = target_x, target_y
+                self.path.pop(0)
+                self.dx = 0  # Add this line
+                self.dy = 0  # Add this line
+            else:
+                move_x = (dx / distance) * self.speed
+                move_y = (dy / distance) * self.speed
+                self.x += move_x
+                self.y += move_y
+                self.dx = move_x  # Add this line
+                self.dy = move_y  # Add this line
 
 class Star(GameObject):
     SYMBOL = '*'

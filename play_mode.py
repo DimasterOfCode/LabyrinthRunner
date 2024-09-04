@@ -15,6 +15,7 @@ from enum import Enum, auto
 
 
 class GameState(Enum):
+    LEVEL_START = auto()
     PLAYING = auto()
     PAUSED = auto()
     GAME_OVER = auto()
@@ -26,8 +27,17 @@ class PlayMode(GameMode):
         self.level_manager = level_manager
         self.font = pygame.font.Font(None, 36)
         self.title_font = pygame.font.Font(None, 48)
-        self.state = GameState.PLAYING
+        self.state = GameState.LEVEL_START
+        self.level_start_time = 0
+        self.LEVEL_START_DELAY = 2000  # 2 seconds delay
+        self.remaining_time = 0
+
+    def start_level(self):
         self.init_game_objects()
+        self.state = GameState.LEVEL_START
+        self.level_start_time = pygame.time.get_ticks()
+        self.remaining_time = self.LEVEL_START_DELAY // 1000
+        self.game.sound_manager.play_sound('level_start')
 
     def get_current_maze(self):
         return self.level_manager.get_current_level().maze
@@ -43,7 +53,13 @@ class PlayMode(GameMode):
         self.state = GameState.PLAYING
 
     def update(self):
-        if self.state == GameState.PLAYING:
+        current_time = pygame.time.get_ticks()
+        
+        if self.state == GameState.LEVEL_START:
+            self.remaining_time = max(0, (self.level_start_time + self.LEVEL_START_DELAY - current_time) // 1000)
+            if current_time - self.level_start_time > self.LEVEL_START_DELAY:
+                self.state = GameState.PLAYING
+        elif self.state == GameState.PLAYING:
             self.player.update()
             if self.enemy:
                 self.enemy.update((self.player.x, self.player.y))
@@ -73,6 +89,8 @@ class PlayMode(GameMode):
             self.render_game_over_overlay(screen)
         elif self.state == GameState.LEVEL_COMPLETE:
             self.render_level_complete_overlay(screen)
+        elif self.state == GameState.LEVEL_START:
+            self.render_level_start_overlay(screen)
 
         self.draw_ui(screen)
 
@@ -133,6 +151,15 @@ class PlayMode(GameMode):
 
     def create_enemy(self):
         enemy = self.create_game_object(Enemy, CELL_SIZE // 2 - 1, ENEMY_SPEED, self.find_path)
+        if enemy is None:
+            # If no 'E' symbol found, place the enemy at a random empty cell
+            empty_cells = [(x, y) for y, row in enumerate(self.get_current_maze()) 
+                           for x, cell in enumerate(row) if cell == ' ']
+            if empty_cells:
+                x, y = random.choice(empty_cells)
+                enemy = Enemy(x * CELL_SIZE + CELL_SIZE // 2, 
+                              y * CELL_SIZE + CELL_SIZE // 2, 
+                              CELL_SIZE // 2 - 1, ENEMY_SPEED, self.find_path)
         return enemy
 
     def create_star(self):
@@ -149,7 +176,7 @@ class PlayMode(GameMode):
 
     def next_level(self):
         self.level_manager.next_level()
-        self.init_game_objects()
+        self.start_level()
 
     def draw_score_area(self, screen):
         pygame.draw.rect(screen, LIGHT_GREEN, (0, 0, WIDTH, SCORE_AREA_HEIGHT))
@@ -195,11 +222,6 @@ class PlayMode(GameMode):
             interpolated_x = self.enemy.x + (self.enemy.dx * interpolation)
             interpolated_y = self.enemy.y + (self.enemy.dy * interpolation)
             self.enemy.draw(screen, self.game.offset_x, self.game.offset_y, interpolated_x, interpolated_y)
-            if not self.enemy.should_chase():
-                countdown = int(self.enemy.chase_delay - (time.time() - self.enemy.start_time))
-                countdown_text = self.font.render(f"Chase starts in: {countdown} seconds", True, RED)
-                countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
-                screen.blit(countdown_text, countdown_rect)
 
         if self.player:
             interpolated_x = self.player.x + (self.player.dx * interpolation)
@@ -221,10 +243,13 @@ class PlayMode(GameMode):
             instruction_text = "Press ESC to return to menu"
         elif self.state == GameState.LEVEL_COMPLETE:
             instruction_text = "Press N for next level, ESC for menu"
-        
-        text = self.font.render(instruction_text, True, WHITE)
-        text_rect = text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
-        screen.blit(text, text_rect)
+        else:
+            instruction_text = ""  # No text for LEVEL_START or unexpected states
+
+        if instruction_text:
+            text = self.font.render(instruction_text, True, WHITE)
+            text_rect = text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
+            screen.blit(text, text_rect)
 
     def collect_coins(self):
         player_rect = pygame.Rect(self.player.x - self.player.radius, 
@@ -327,3 +352,26 @@ class PlayMode(GameMode):
         next_level_text = self.font.render("Press N for next level", True, WHITE)
         next_rect = next_level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
         screen.blit(next_level_text, next_rect)
+
+    def render_level_start_overlay(self, screen):
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+        screen.blit(overlay, (0, 0))
+        
+        level_text = self.title_font.render(f"Level {self.level_manager.get_current_level().level_number}", True, WHITE)
+        level_rect = level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60))
+        screen.blit(level_text, level_rect)
+
+        if self.level_manager.get_current_level().title:
+            title_text = self.font.render(self.level_manager.get_current_level().title, True, WHITE)
+            title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            screen.blit(title_text, title_rect)
+
+        # Add countdown display
+        countdown_text = self.title_font.render(str(self.remaining_time), True, GOLD)
+        countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
+        screen.blit(countdown_text, countdown_rect)
+
+        ready_text = self.font.render("Get ready!", True, WHITE)
+        ready_rect = ready_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 120))
+        screen.blit(ready_text, ready_rect)
