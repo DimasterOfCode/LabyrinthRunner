@@ -84,12 +84,21 @@ class MenuMode(GameMode):
     def lerp_color(color1, color2, t):
         return tuple(int(a + (b - a) * t) for a, b in zip(color1, color2))
 
+from enum import Enum, auto
+
+class GameState(Enum):
+    PLAYING = auto()
+    PAUSED = auto()
+    GAME_OVER = auto()
+    LEVEL_COMPLETE = auto()
+
 class PlayMode(GameMode):
     def __init__(self, game, level_manager):
         super().__init__(game)
         self.level_manager = level_manager
         self.font = pygame.font.Font(None, 36)
         self.title_font = pygame.font.Font(None, 48)
+        self.state = GameState.PLAYING
         self.init_game_objects()
 
     def get_current_maze(self):
@@ -103,17 +112,22 @@ class PlayMode(GameMode):
         self.diamonds = self.create_diamonds()
         self.coins = self.create_coins(0)
         self.score = 0
-        self.game_over = False
-        self.level_complete = False
+        self.state = GameState.PLAYING
 
     def update(self):
-        if not self.game_over and not self.level_complete:
+        if self.state == GameState.PLAYING:
             self.player.update()
             if self.enemy:
                 self.enemy.update((self.player.x, self.player.y))
             self.collect_coins()
             self.check_enemy_collision()
             self.check_level_complete()
+        elif self.state == GameState.PAUSED:
+            pass  # Do nothing when paused
+        elif self.state == GameState.GAME_OVER:
+            pass  # Maybe add a game over animation or countdown here
+        elif self.state == GameState.LEVEL_COMPLETE:
+            pass  # Maybe add a level complete animation here
 
     def render(self, screen, interpolation):
         # Draw gradient background
@@ -124,24 +138,30 @@ class PlayMode(GameMode):
         self.render_game_objects(screen, interpolation)
         self.draw_score_area(screen)
 
-        # Darken the screen on level completion and game over
-        if self.level_complete or self.game_over:
-            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
-            screen.blit(overlay, (0, 0))
+        # Render state-specific overlays
+        if self.state == GameState.PAUSED:
+            self.render_pause_overlay(screen)
+        elif self.state == GameState.GAME_OVER:
+            self.render_game_over_overlay(screen)
+        elif self.state == GameState.LEVEL_COMPLETE:
+            self.render_level_complete_overlay(screen)
 
-        # Draw game state and UI after the darkening effect
-        self.draw_game_state(screen)
         self.draw_ui(screen)
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
+                if self.state == GameState.PLAYING:
+                    self.state = GameState.PAUSED
+                elif self.state == GameState.PAUSED:
+                    self.state = GameState.PLAYING
+                else:  # GAME_OVER or LEVEL_COMPLETE
+                    self.game.set_mode("menu")
+            elif event.key == pygame.K_x and self.state == GameState.PAUSED:
                 self.game.set_mode("menu")
-            elif self.level_complete:
-                if event.key == pygame.K_n:
-                    self.next_level()
-            else:
+            elif self.state == GameState.LEVEL_COMPLETE and event.key == pygame.K_n:
+                self.next_level()
+            elif self.state == GameState.PLAYING:
                 self.handle_player_input(event)
 
     def check_collision(self, x, y, radius):
@@ -264,47 +284,19 @@ class PlayMode(GameMode):
         for diamond in self.diamonds:
             diamond.draw(screen, self.game.offset_x, self.game.offset_y)
 
-    def draw_game_state(self, screen):
-        if self.game_over or self.level_complete:
-            if self.game_over:
-                main_text = "GAME OVER"
-                color = RED
-            else:
-                main_text = "Level Complete!"
-                color = GOLD
-
-            # Render text with shadow
-            shadow_color = BLACK
-            main_text_shadow = self.font.render(main_text, True, shadow_color)
-            main_text_surface = self.font.render(main_text, True, color)
-
-            # Position text
-            text_rect = main_text_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-            shadow_rect = text_rect.copy()
-            shadow_rect.x += 2
-            shadow_rect.y += 2
-
-            # Draw shadow first, then main text
-            screen.blit(main_text_shadow, shadow_rect)
-            screen.blit(main_text_surface, text_rect)
-
-            if self.level_complete:
-                next_level_text = "Press N for next level"
-                next_level_shadow = self.font.render(next_level_text, True, shadow_color)
-                next_level_surface = self.font.render(next_level_text, True, WHITE)
-
-                next_rect = next_level_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
-                next_shadow_rect = next_rect.copy()
-                next_shadow_rect.x += 2
-                next_shadow_rect.y += 2
-
-                screen.blit(next_level_shadow, next_shadow_rect)
-                screen.blit(next_level_surface, next_rect)
-
     def draw_ui(self, screen):
-        quit_text = self.font.render("Press ESC to return to menu", True, WHITE)
-        quit_rect = quit_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
-        screen.blit(quit_text, quit_rect)
+        if self.state == GameState.PLAYING:
+            instruction_text = "Press ESC to pause"
+        elif self.state == GameState.PAUSED:
+            instruction_text = "Press ESC to resume, X to exit"
+        elif self.state == GameState.GAME_OVER:
+            instruction_text = "Press ESC to return to menu"
+        elif self.state == GameState.LEVEL_COMPLETE:
+            instruction_text = "Press N for next level, ESC for menu"
+        
+        text = self.font.render(instruction_text, True, WHITE)
+        text_rect = text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
+        screen.blit(text, text_rect)
 
     def collect_coins(self):
         player_rect = pygame.Rect(self.player.x - self.player.radius, 
@@ -327,7 +319,7 @@ class PlayMode(GameMode):
                                     self.star.radius * 2, 
                                     self.star.radius * 2)
             if player_rect.colliderect(star_rect):
-                self.level_complete = True
+                self.state = GameState.LEVEL_COMPLETE
                 star_x, star_y = int(self.star.x // CELL_SIZE), int(self.star.y // CELL_SIZE)
                 self.get_current_maze()[star_y][star_x] = ' '
                 self.star = None
@@ -355,15 +347,15 @@ class PlayMode(GameMode):
                                      self.enemy.radius * 2, 
                                      self.enemy.radius * 2)
             if player_rect.colliderect(enemy_rect):
-                self.game_over = True
-                self.game.play_game_over_sound()  # Play the game over sound
+                self.state = GameState.GAME_OVER
+                self.game.play_game_over_sound()
 
     def check_level_complete(self):
         if not self.coins and not self.star and not self.diamonds:
-            self.level_complete = True
+            self.state = GameState.LEVEL_COMPLETE
 
         # Check if we've completed all levels
-        if self.level_complete and self.level_manager.current_level_index == len(self.level_manager.levels) - 1:
+        if self.state == GameState.LEVEL_COMPLETE and self.level_manager.current_level_index == len(self.level_manager.levels) - 1:
             self.level_manager.current_level_index = 0
             self.init_game_objects()
 
@@ -376,6 +368,37 @@ class PlayMode(GameMode):
             self.player.set_direction((0, 1))
         elif event.key == pygame.K_UP:
             self.player.set_direction((0, -1))
+
+    def render_pause_overlay(self, screen):
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+        screen.blit(overlay, (0, 0))
+        
+        pause_text = self.title_font.render("PAUSED", True, WHITE)
+        pause_rect = pause_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(pause_text, pause_rect)
+
+    def render_game_over_overlay(self, screen):
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+        screen.blit(overlay, (0, 0))
+        
+        game_over_text = self.title_font.render("GAME OVER", True, RED)
+        game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(game_over_text, game_over_rect)
+
+    def render_level_complete_overlay(self, screen):
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+        screen.blit(overlay, (0, 0))
+        
+        complete_text = self.title_font.render("LEVEL COMPLETE!", True, GOLD)
+        complete_rect = complete_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(complete_text, complete_rect)
+
+        next_level_text = self.font.render("Press N for next level", True, WHITE)
+        next_rect = next_level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
+        screen.blit(next_level_text, next_rect)
 
 class LevelEditorMode(GameMode):
     def __init__(self, game, level_manager):
