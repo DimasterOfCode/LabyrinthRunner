@@ -47,10 +47,10 @@ class Game:
         self.fps_update_time = 0
 
     def play_game_over_sound(self):
-        self.sound_manager.play_game_over_sound()
+        self.sound_manager.play_sound('game_over')
 
     def play_star_consume_sound(self):
-        self.sound_manager.play_star_consume_sound()
+        self.sound_manager.play_sound('star_consume')
 
     def set_mode(self, mode_name):
         self.current_mode = self.modes[mode_name]
