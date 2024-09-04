@@ -17,7 +17,7 @@ class Game:
         self.clock = pygame.time.Clock()
         
         self.level_manager = LevelManager("levels.json")
-        self.load_or_generate_levels()
+        self.level_manager.load_or_generate_levels()
 
         self.offset_x = (WIDTH - MAZE_WIDTH * CELL_SIZE) // 2
         self.offset_y = SCORE_AREA_HEIGHT
@@ -89,13 +89,6 @@ class Game:
                 self.running = False
             else:
                 self.current_mode.handle_event(event)
-
-    def load_or_generate_levels(self):
-        if os.path.exists(self.level_manager.levels_file):
-            self.level_manager.load_levels_from_file()
-        else:
-            print("No levels file found. Entering Level Editor.")
-            self.set_mode("level_editor")
 
     def update_fps(self):
         current_time = pygame.time.get_ticks()

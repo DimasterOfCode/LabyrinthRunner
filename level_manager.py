@@ -1,4 +1,5 @@
 import json
+import os
 from constants import MAZE_WIDTH, MAZE_HEIGHT
 
 class LevelManager:
@@ -7,15 +8,36 @@ class LevelManager:
         self.levels = []
         self.current_level_index = 0
 
+    def load_or_generate_levels(self):
+        if os.path.exists(self.levels_file):
+            self.load_levels_from_file()
+        else:
+            print("No levels file found. Generating a default level.")
+            self.generate_default_level()
+
     def load_levels_from_file(self):
-        with open(self.levels_file, 'r') as f:
-            levels_data = json.load(f)
-        self.levels = [Level(level_data["maze"], level_data["level_number"], level_data.get("title", "")) for level_data in levels_data]
-        if self.levels and not self.levels[0].title:
-            self.levels[0].title = "The Zig Zag"
-        if len(self.levels) > 1 and not self.levels[1].title:
-            self.levels[1].title = "The Swirl"
-        print(f"Levels loaded from {self.levels_file}")
+        try:
+            with open(self.levels_file, 'r') as f:
+                levels_data = json.load(f)
+            self.levels = [Level(level_data["maze"], level_data["level_number"], level_data.get("title", "")) for level_data in levels_data]
+            if self.levels and not self.levels[0].title:
+                self.levels[0].title = "The Zig Zag"
+            if len(self.levels) > 1 and not self.levels[1].title:
+                self.levels[1].title = "The Swirl"
+            print(f"Levels loaded from {self.levels_file}")
+        except FileNotFoundError:
+            print(f"Levels file {self.levels_file} not found.")
+            self.generate_default_level()
+        except json.JSONDecodeError:
+            print(f"Error parsing {self.levels_file}. Generating a default level.")
+            self.generate_default_level()
+
+    def generate_default_level(self):
+        default_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
+        default_level = Level(default_maze, 1, "Default Level")
+        self.levels = [default_level]
+        self.current_level_index = 0
+        print("Default level generated.")
 
     def save_levels_to_file(self):
         levels_data = [{"maze": level.maze, "level_number": level.level_number, "title": level.title} for level in self.levels]
@@ -39,7 +61,6 @@ class LevelManager:
         self.levels.append(Level(new_maze, len(self.levels) + 1))
         self.current_level_index = len(self.levels) - 1
         return self.get_current_level() 
-    
 
 class Level:
     def __init__(self, maze, level_number, title=""):
