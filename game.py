@@ -5,9 +5,13 @@ import pygame
 import pygame.gfxdraw
 
 from constants import WIDTH, HEIGHT, SCORE_AREA_HEIGHT, MAZE_WIDTH, CELL_SIZE, FPS
-from game_modes import MenuMode, RunnerCustomizationMode, LevelEditorMode, PlayMode
 from level_manager import LevelManager
 from sound_manager import SoundManager  # Add this import
+
+from menu_mode import MenuMode
+from runner_customization_mode import RunnerCustomizationMode
+from level_editor_mode import LevelEditorMode
+from play_mode import PlayMode
 
 class Game:
     def __init__(self):
