@@ -75,7 +75,9 @@ class PlayMode(GameMode):
 
     def render(self, screen, interpolation):
         # Draw gradient background
-        self.draw_gradient_background(screen)
+        for y in range(HEIGHT):
+            color = self.lerp_color(THEME_BACKGROUND, THEME_PRIMARY, y / HEIGHT)
+            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
 
         # Render maze and other game elements
         self.render_maze(screen)
@@ -179,34 +181,23 @@ class PlayMode(GameMode):
         self.start_level()
 
     def draw_score_area(self, screen):
-        pygame.draw.rect(screen, LIGHT_GREEN, (0, 0, WIDTH, SCORE_AREA_HEIGHT))
-        pygame.draw.line(screen, BLACK, (0, SCORE_AREA_HEIGHT), (WIDTH, SCORE_AREA_HEIGHT), 2)
+        pygame.draw.rect(screen, THEME_PRIMARY, (0, 0, WIDTH, SCORE_AREA_HEIGHT))
+        pygame.draw.line(screen, THEME_SECONDARY, (0, SCORE_AREA_HEIGHT), (WIDTH, SCORE_AREA_HEIGHT), 2)
 
-        score_text = self.font.render(f"Score: {self.score}", True, BLACK)
+        score_text = self.font.render(f"Score: {self.score}", True, THEME_TEXT)
         score_rect = score_text.get_rect(midleft=(10, SCORE_AREA_HEIGHT // 2))
         screen.blit(score_text, score_rect)
 
-        level_text = self.font.render(f"Level: {self.level_manager.get_current_level().level_number}", True, BLACK)
+        level_text = self.font.render(f"Level: {self.level_manager.get_current_level().level_number}", True, THEME_TEXT)
         level_rect = level_text.get_rect(midright=(WIDTH - 10, SCORE_AREA_HEIGHT // 2))
         screen.blit(level_text, level_rect)
 
         # Add level title
         current_level = self.level_manager.get_current_level()
         if current_level.title:
-            title_text = self.title_font.render(current_level.title, True, BLACK)
+            title_text = self.title_font.render(current_level.title, True, THEME_TEXT)
             title_rect = title_text.get_rect(center=(WIDTH // 2, SCORE_AREA_HEIGHT // 2))
             screen.blit(title_text, title_rect)
-
-    def draw_gradient_background(self, screen):
-        color1 = (0, 0, 0)  # Start color (black)
-        color2 = (0, 0, 255)  # End color (blue)
-        for y in range(HEIGHT):
-            color = (
-                color1[0] + (color2[0] - color1[0]) * y // HEIGHT,
-                color1[1] + (color2[1] - color1[1]) * y // HEIGHT,
-                color1[2] + (color2[2] - color1[2]) * y // HEIGHT,
-            )
-            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
 
     def render_maze(self, screen):
         for y, row in enumerate(self.get_current_maze()):
@@ -324,54 +315,58 @@ class PlayMode(GameMode):
 
     def render_pause_overlay(self, screen):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+        overlay.fill((*THEME_BACKGROUND[:3], 150))  # Semi-transparent background
         screen.blit(overlay, (0, 0))
         
-        pause_text = self.title_font.render("PAUSED", True, WHITE)
+        pause_text = self.title_font.render("PAUSED", True, THEME_TEXT)
         pause_rect = pause_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(pause_text, pause_rect)
 
     def render_game_over_overlay(self, screen):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+        overlay.fill((*THEME_BACKGROUND[:3], 150))  # Semi-transparent background
         screen.blit(overlay, (0, 0))
         
-        game_over_text = self.title_font.render("GAME OVER", True, RED)
+        game_over_text = self.title_font.render("GAME OVER", True, THEME_ACCENT)
         game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(game_over_text, game_over_rect)
 
     def render_level_complete_overlay(self, screen):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+        overlay.fill((*THEME_BACKGROUND[:3], 150))  # Semi-transparent background
         screen.blit(overlay, (0, 0))
         
-        complete_text = self.title_font.render("LEVEL COMPLETE!", True, GOLD)
+        complete_text = self.title_font.render("LEVEL COMPLETE!", True, THEME_ACCENT)
         complete_rect = complete_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(complete_text, complete_rect)
 
-        next_level_text = self.font.render("Press N for next level", True, WHITE)
+        next_level_text = self.font.render("Press N for next level", True, THEME_TEXT)
         next_rect = next_level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
         screen.blit(next_level_text, next_rect)
 
     def render_level_start_overlay(self, screen):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))  # Semi-transparent black overlay
+        overlay.fill((*THEME_BACKGROUND[:3], 150))  # Semi-transparent background
         screen.blit(overlay, (0, 0))
         
-        level_text = self.title_font.render(f"Level {self.level_manager.get_current_level().level_number}", True, WHITE)
+        level_text = self.title_font.render(f"Level {self.level_manager.get_current_level().level_number}", True, THEME_TEXT)
         level_rect = level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60))
         screen.blit(level_text, level_rect)
 
         if self.level_manager.get_current_level().title:
-            title_text = self.font.render(self.level_manager.get_current_level().title, True, WHITE)
+            title_text = self.font.render(self.level_manager.get_current_level().title, True, THEME_TEXT)
             title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
             screen.blit(title_text, title_rect)
 
         # Add countdown display
-        countdown_text = self.title_font.render(str(self.remaining_time), True, GOLD)
+        countdown_text = self.title_font.render(str(self.remaining_time), True, THEME_ACCENT)
         countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
         screen.blit(countdown_text, countdown_rect)
 
-        ready_text = self.font.render("Get ready!", True, WHITE)
+        ready_text = self.font.render("Get ready!", True, THEME_TEXT)
         ready_rect = ready_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 120))
         screen.blit(ready_text, ready_rect)
+
+    @staticmethod
+    def lerp_color(color1, color2, t):
+        return tuple(int(a + (b - a) * t) for a, b in zip(color1, color2))

@@ -26,18 +26,22 @@ class LevelEditorMode(GameMode):
         pass
 
     def render(self, screen, interpolation):
-        screen.fill(GREEN)
+        # Draw gradient background
+        for y in range(HEIGHT):
+            color = self.lerp_color(THEME_BACKGROUND, THEME_PRIMARY, y / HEIGHT)
+            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
+
         self.draw_maze(screen)
         self.draw_ui(screen)
         if self.show_help:
             self.draw_help_overlay(screen)
 
     def draw_ui(self, screen):
-        dev_text = self.font.render("Dev Mode: Press H for help", True, BLACK)
+        dev_text = self.font.render("Dev Mode: Press H for help", True, THEME_TEXT)
         dev_rect = dev_text.get_rect(midtop=(WIDTH // 2, 10))
         screen.blit(dev_text, dev_rect)
 
-        quit_text = self.font.render("Press ESC to return to menu", True, BLACK)
+        quit_text = self.font.render("Press ESC to return to menu", True, THEME_TEXT)
         quit_rect = quit_text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
         screen.blit(quit_text, quit_rect)
 
@@ -102,7 +106,8 @@ class LevelEditorMode(GameMode):
 
     def draw_help_overlay(self, screen):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))  # Semi-transparent black background
+        overlay.fill((*THEME_BACKGROUND[:3], 200))  # Semi-transparent background
+        screen.blit(overlay, (0, 0))
 
         help_text = [
             "Dev Mode Hotkeys:",
@@ -130,12 +135,10 @@ class LevelEditorMode(GameMode):
 
         y_offset = 50
         for line in help_text:
-            text_surface = self.font.render(line, True, WHITE)
+            text_surface = self.font.render(line, True, THEME_TEXT)
             text_rect = text_surface.get_rect(center=(WIDTH // 2, y_offset))
-            overlay.blit(text_surface, text_rect)
+            screen.blit(text_surface, text_rect)
             y_offset += 30
-
-        screen.blit(overlay, (0, 0))
 
     def handle_mousebuttondown(self, event):
         if event.button == 1:

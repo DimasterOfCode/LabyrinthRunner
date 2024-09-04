@@ -1,4 +1,3 @@
-
 import random
 import time
 import math
@@ -37,7 +36,7 @@ class MenuMode(GameMode):
     def render(self, screen, interpolation):
         # Create gradient background
         for y in range(HEIGHT):
-            color = self.lerp_color((20, 20, 50), (50, 50, 100), y / HEIGHT)
+            color = self.lerp_color(THEME_BACKGROUND, THEME_PRIMARY, y / HEIGHT)
             pygame.draw.line(screen, color, (0, y), (WIDTH, y))
 
         # Draw animated circles
@@ -48,18 +47,18 @@ class MenuMode(GameMode):
             pygame.gfxdraw.aacircle(screen, int(x), int(y), int(radius), (255, 255, 255, 50))
 
         # Draw title
-        title = self.font.render(self.title, True, (255, 255, 255))
+        title = self.font.render(self.title, True, THEME_TEXT)
         title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 4))
         screen.blit(title, title_rect)
 
         # Draw buttons
         for i, button in enumerate(self.buttons):
-            text = self.small_font.render(button["text"], True, (255, 255, 255))
+            text = self.small_font.render(button["text"], True, THEME_TEXT)
             button_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
             
             if i == self.selected_button:
                 # Draw highlighted button
-                pygame.draw.rect(screen, (100, 100, 255), button_rect.inflate(20, 10), border_radius=5)
+                pygame.draw.rect(screen, THEME_SECONDARY, button_rect.inflate(20, 10), border_radius=5)
             
             screen.blit(text, button_rect)
 

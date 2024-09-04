@@ -23,3 +23,11 @@ RED = (255, 0, 0)
 GOLD = (255, 215, 0)
 CYAN = (0, 255, 255)  # New color for diamonds
 COIN_COLOR = YELLOW  # New constant for coin color
+
+# Theme Colors
+THEME_PRIMARY = (50, 50, 100)  # Dark blue
+THEME_SECONDARY = (100, 100, 255)  # Light blue
+THEME_ACCENT = (255, 215, 0)  # Gold
+THEME_BACKGROUND = (20, 20, 50)  # Very dark blue
+THEME_TEXT = (255, 255, 255)  # White
+THEME_TEXT_SECONDARY = (200, 200, 200)  # Light gray

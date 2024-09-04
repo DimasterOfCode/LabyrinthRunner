@@ -25,20 +25,23 @@ class RunnerCustomizationMode(GameMode):
         pass
 
     def render(self, screen, interpolation):
-        screen.fill(BLACK)
+        # Draw gradient background
+        for y in range(HEIGHT):
+            color = self.lerp_color(THEME_BACKGROUND, THEME_PRIMARY, y / HEIGHT)
+            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
 
-        title = self.title_font.render("Runner Customization", True, WHITE)
+        title = self.title_font.render("Runner Customization", True, THEME_TEXT)
         title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 6))
         screen.blit(title, title_rect)
 
-        color_text = self.font.render("Press SPACE to change color", True, WHITE)
+        color_text = self.font.render("Press SPACE to change color", True, THEME_TEXT)
         color_rect = color_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
         screen.blit(color_text, color_rect)
 
         # Draw example player
         pygame.draw.circle(screen, self.colors[self.color_index], (WIDTH // 2, HEIGHT // 2 + 50), CELL_SIZE // 2 - 1)
 
-        back_text = self.font.render("Press ESC to return to menu", True, WHITE)
+        back_text = self.font.render("Press ESC to return to menu", True, THEME_TEXT)
         back_rect = back_text.get_rect(center=(WIDTH // 2, HEIGHT - 50))
         screen.blit(back_text, back_rect)
 
@@ -51,4 +54,3 @@ class RunnerCustomizationMode(GameMode):
 
     def get_player_color(self):
         return self.colors[self.color_index]
- 
