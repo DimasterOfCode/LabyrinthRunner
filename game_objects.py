@@ -48,19 +48,19 @@ class Player(MovableObject):
         y = interpolated_y if interpolated_y is not None else self.y
         pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
         
-        # Draw eyes
+        # Draw eyes (back to original proportions)
         eye_radius = max(2, self.radius // 5)
         eye_offset = self.radius // 3
         pygame.draw.circle(screen, BLACK, (int(x - eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
         pygame.draw.circle(screen, BLACK, (int(x + eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
         
-        # Draw mouth based on face type
+        # Draw mouth based on face type (back to original proportions)
         if self.face_type == "happy":
             smile_rect = (int(x - self.radius//2 + offset_x), int(y + offset_y), self.radius, self.radius//2)
-            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius//5))  # Happy smile
+            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius//5))  # Back to original thickness
         else:  # sad face
             frown_rect = (int(x - self.radius//2 + offset_x), int(y + self.radius//4 + offset_y), self.radius, self.radius//2)
-            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, self.radius//5))  # Sad frown
+            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, self.radius//5))  # Back to original thickness
 
     def set_direction(self, direction):
         if self.direction is None:

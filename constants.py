@@ -31,3 +31,7 @@ THEME_ACCENT = (255, 215, 0)  # Gold
 THEME_BACKGROUND = (20, 20, 50)  # Very dark blue
 THEME_TEXT = (255, 255, 255)  # White
 THEME_TEXT_SECONDARY = (200, 200, 200)  # Light gray
+
+# Player constants
+PLAYER_RADIUS = CELL_SIZE // 2.5 # Changed from CELL_SIZE // 2 to CELL_SIZE // 2.5
+PLAYER_SPEED = 5  # Player movement speed

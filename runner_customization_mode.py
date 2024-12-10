@@ -68,23 +68,23 @@ class RunnerCustomizationMode(GameMode):
         screen.blit(title, title_rect)
         
         # Draw current character preview (larger circle with face)
-        preview_radius = 40  # Larger radius for better visibility
-        preview_pos = (WIDTH//2, HEIGHT//2 - 80)  # Moved up a bit
+        preview_radius = 60  # Increased from 40 to 60
+        preview_pos = (WIDTH//2, HEIGHT//2 - 100)  # Moved up a bit more to accommodate larger size
         pygame.draw.circle(screen, self.colors[self.color_index], preview_pos, preview_radius)
         
-        # Draw eyes for preview
-        eye_radius = max(2, preview_radius // 5)
+        # Draw eyes for preview (scaled up)
+        eye_radius = max(3, preview_radius // 5)  # Slightly larger eyes
         eye_offset = preview_radius // 3
         pygame.draw.circle(screen, BLACK, (int(preview_pos[0] - eye_offset), int(preview_pos[1] - eye_offset)), eye_radius)
         pygame.draw.circle(screen, BLACK, (int(preview_pos[0] + eye_offset), int(preview_pos[1] - eye_offset)), eye_radius)
         
-        # Draw mouth based on current_face
+        # Draw mouth based on current_face (scaled up)
         if self.current_face == "happy":
             smile_rect = (int(preview_pos[0] - preview_radius//2), int(preview_pos[1]), preview_radius, preview_radius//2)
-            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, preview_radius//5))  # Happy smile
+            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(2, preview_radius//5))  # Thicker line
         else:
             frown_rect = (int(preview_pos[0] - preview_radius//2), int(preview_pos[1] + preview_radius//4), preview_radius, preview_radius//2)
-            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, preview_radius//5))  # Sad frown
+            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(2, preview_radius//5))  # Thicker line
         
         # Draw face selection buttons
         pygame.draw.rect(screen, THEME_PRIMARY, self.happy_button)

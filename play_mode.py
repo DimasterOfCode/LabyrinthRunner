@@ -25,6 +25,7 @@ class PlayMode(GameMode):
     def __init__(self, game, level_manager):
         super().__init__(game)
         self.level_manager = level_manager
+        self.player = None
         self.font = pygame.font.Font(None, 36)
         self.title_font = pygame.font.Font(None, 48)
         self.state = GameState.LEVEL_START
@@ -33,11 +34,43 @@ class PlayMode(GameMode):
         self.remaining_time = 0
 
     def start_level(self):
-        self.init_game_objects()
+        current_level = self.level_manager.get_current_level()
+        # Find starting position in maze
+        start_pos = self.find_start_position(current_level.maze)
+        if start_pos is None:
+            # If no start position found, use a default position
+            start_pos = (CELL_SIZE * 1.5, CELL_SIZE * 1.5)
+        
+        # Get customization settings
+        customization_mode = self.game.modes["runner_customization"]
+        player_color = customization_mode.get_player_color()
+        player_face = customization_mode.current_face  # Get the selected face type
+        
+        # Create player with the selected face type and larger radius
+        self.player = Player(
+            x=start_pos[0],
+            y=start_pos[1],
+            radius=CELL_SIZE // 2,  # Changed from PLAYER_RADIUS to CELL_SIZE // 2
+            speed=PLAYER_SPEED,
+            collision_checker=self.check_collision,
+            color=player_color,
+            face_type=player_face
+        )
+        self.enemy = self.create_enemy()
+        self.star = self.create_star()
+        self.diamonds = self.create_diamonds()
+        self.coins = self.create_coins(0)
+        self.score = 0
         self.state = GameState.LEVEL_START
         self.level_start_time = pygame.time.get_ticks()
-        self.remaining_time = self.LEVEL_START_DELAY // 1000
-        self.game.sound_manager.play_sound('level_start')
+
+    def find_start_position(self, maze):
+        """Find the starting position marked with 'S' in the maze"""
+        for y, row in enumerate(maze):
+            for x, cell in enumerate(row):
+                if cell == 'S':
+                    return (x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2)
+        return None
 
     def get_current_maze(self):
         return self.level_manager.get_current_level().maze
@@ -53,6 +86,9 @@ class PlayMode(GameMode):
         self.state = GameState.PLAYING
 
     def update(self):
+        if self.player is None:
+            return
+            
         current_time = pygame.time.get_ticks()
         
         if self.state == GameState.LEVEL_START:
@@ -146,7 +182,7 @@ class PlayMode(GameMode):
         return None
 
     def create_player(self, color):
-        player = self.create_game_object(Player, CELL_SIZE // 2 - 1, PLAYER_SPEED, self.check_collision, color)
+        player = self.create_game_object(Player, PLAYER_RADIUS, PLAYER_SPEED, self.check_collision, color)
         return player
 
     def create_coins(self, num_coins):
