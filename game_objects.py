@@ -69,14 +69,15 @@ class Particle:
 
 class Player(MovableObject):
     SYMBOL = 'S'
-    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy"):
+    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy", trail_color=PARTICLE_COLOR):
         super().__init__(x, y, radius, speed)
         self.collision_checker = collision_checker
         self.direction = None
         self.color = color
         self.face_type = face_type
-        self.particles = []  # Add particle list
-        self.last_particle_time = time.time()  # Track last particle spawn time
+        self.trail_color = trail_color  # Store trail color
+        self.particles = []
+        self.last_particle_time = time.time()
 
     def move(self, dx, dy):
         self.x += dx * self.speed
@@ -136,10 +137,10 @@ class Player(MovableObject):
             new_y = self.y + dy * self.speed
             if not self.collision_checker(new_x, new_y, self.radius):
                 self.move(dx, dy)
-                # Add particles when moving
+                # Add particles with custom trail color when moving
                 current_time = time.time()
-                if current_time - self.last_particle_time > 0.02:  # Spawn particle every 20ms
-                    self.particles.append(Particle(self.x, self.y, PARTICLE_COLOR))
+                if current_time - self.last_particle_time > 0.02:
+                    self.particles.append(Particle(self.x, self.y, self.trail_color))
                     self.last_particle_time = current_time
             else:
                 self.direction = None
