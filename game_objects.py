@@ -32,11 +32,12 @@ class MovableObject(GameObject):
 
 class Player(MovableObject):
     SYMBOL = 'S'
-    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD):
+    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy"):
         super().__init__(x, y, radius, speed)
         self.collision_checker = collision_checker
         self.direction = None
         self.color = color
+        self.face_type = face_type
 
     def move(self, dx, dy):
         self.x += dx * self.speed
@@ -46,12 +47,20 @@ class Player(MovableObject):
         x = interpolated_x if interpolated_x is not None else self.x
         y = interpolated_y if interpolated_y is not None else self.y
         pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
+        
+        # Draw eyes
         eye_radius = max(2, self.radius // 5)
         eye_offset = self.radius // 3
         pygame.draw.circle(screen, BLACK, (int(x - eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
         pygame.draw.circle(screen, BLACK, (int(x + eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
-        smile_rect = (int(x - self.radius // 2 + offset_x), int(y + offset_y), self.radius, self.radius // 2)
-        pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius // 5))
+        
+        # Draw mouth based on face type
+        if self.face_type == "happy":
+            smile_rect = (int(x - self.radius//2 + offset_x), int(y + offset_y), self.radius, self.radius//2)
+            pygame.draw.arc(screen, BLACK, smile_rect, 0, 3.14, max(1, self.radius//5))  # Happy smile
+        else:  # sad face
+            frown_rect = (int(x - self.radius//2 + offset_x), int(y + self.radius//4 + offset_y), self.radius, self.radius//2)
+            pygame.draw.arc(screen, BLACK, frown_rect, 3.14, 2 * 3.14, max(1, self.radius//5))  # Sad frown
 
     def set_direction(self, direction):
         if self.direction is None:

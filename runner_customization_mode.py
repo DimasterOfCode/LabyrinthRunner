@@ -72,11 +72,19 @@ class RunnerCustomizationMode(GameMode):
         preview_pos = (WIDTH//2, HEIGHT//2 - 80)  # Moved up a bit
         pygame.draw.circle(screen, self.colors[self.color_index], preview_pos, preview_radius)
         
-        # Draw current face larger (using a larger font for the face)
-        face_font = pygame.font.Font(None, 80)  # Larger font for the face
-        face = face_font.render(self.faces[self.current_face], True, BLACK)  # Changed color to BLACK for better visibility
-        face_rect = face.get_rect(center=preview_pos)
-        screen.blit(face, face_rect)
+        # Draw eyes for preview
+        eye_radius = max(2, preview_radius // 5)
+        eye_offset = preview_radius // 3
+        pygame.draw.circle(screen, BLACK, (int(preview_pos[0] - eye_offset), int(preview_pos[1] - eye_offset)), eye_radius)
+        pygame.draw.circle(screen, BLACK, (int(preview_pos[0] + eye_offset), int(preview_pos[1] - eye_offset)), eye_radius)
+        
+        # Draw mouth based on current_face
+        if self.current_face == "happy":
+            smile_rect = (int(preview_pos[0] - preview_radius//2), int(preview_pos[1]), preview_radius, preview_radius//2)
+            pygame.draw.arc(screen, BLACK, smile_rect, 0, 3.14, max(1, preview_radius//5))  # Happy smile
+        else:
+            frown_rect = (int(preview_pos[0] - preview_radius//2), int(preview_pos[1] + preview_radius//4), preview_radius, preview_radius//2)
+            pygame.draw.arc(screen, BLACK, frown_rect, 3.14, 2 * 3.14, max(1, preview_radius//5))  # Sad frown
         
         # Draw face selection buttons
         pygame.draw.rect(screen, THEME_PRIMARY, self.happy_button)
@@ -112,8 +120,10 @@ class RunnerCustomizationMode(GameMode):
             
             # Face selection
             if self.happy_button.collidepoint(mouse_pos):
+                print("Happy face selected")  # Debug print
                 self.current_face = "happy"
             elif self.sad_button.collidepoint(mouse_pos):
+                print("Sad face selected")  # Debug print
                 self.current_face = "sad"
             
             # Color selection
