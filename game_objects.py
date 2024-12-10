@@ -30,6 +30,30 @@ class MovableObject(GameObject):
         y = interpolated_y if interpolated_y is not None else self.y
         pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
 
+class Particle:
+    def __init__(self, x, y, color):
+        self.x = x
+        self.y = y
+        self.color = list(color)  # Convert to list for alpha modification
+        self.color.append(255)    # Add alpha channel
+        self.birth_time = time.time()
+        self.size = PARTICLE_SIZE
+
+    def update(self):
+        age = time.time() - self.birth_time
+        if age > PARTICLE_LIFETIME:
+            return False
+        
+        # Fade out over lifetime
+        self.color[3] = max(0, 255 * (1 - age / PARTICLE_LIFETIME))
+        return True
+
+    def draw(self, screen, offset_x, offset_y):
+        if self.color[3] > 0:  # Only draw if not completely transparent
+            surface = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
+            pygame.draw.circle(surface, self.color, (self.size, self.size), self.size)
+            screen.blit(surface, (int(self.x + offset_x - self.size), int(self.y + offset_y - self.size)))
+
 class Player(MovableObject):
     SYMBOL = 'S'
     def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy"):
@@ -38,29 +62,36 @@ class Player(MovableObject):
         self.direction = None
         self.color = color
         self.face_type = face_type
+        self.particles = []  # Add particle list
+        self.last_particle_time = time.time()  # Track last particle spawn time
 
     def move(self, dx, dy):
         self.x += dx * self.speed
         self.y += dy * self.speed
 
     def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
+        # Draw particles first (behind player)
+        for particle in self.particles:
+            particle.draw(screen, offset_x, offset_y)
+            
+        # Draw player (existing code)
         x = interpolated_x if interpolated_x is not None else self.x
         y = interpolated_y if interpolated_y is not None else self.y
         pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
         
-        # Draw eyes (back to original proportions)
+        # Draw eyes (existing code)
         eye_radius = max(2, self.radius // 5)
         eye_offset = self.radius // 3
         pygame.draw.circle(screen, BLACK, (int(x - eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
         pygame.draw.circle(screen, BLACK, (int(x + eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
         
-        # Draw mouth based on face type (back to original proportions)
+        # Draw mouth (existing code)
         if self.face_type == "happy":
             smile_rect = (int(x - self.radius//2 + offset_x), int(y + offset_y), self.radius, self.radius//2)
-            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius//5))  # Back to original thickness
+            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius//5))
         else:  # sad face
             frown_rect = (int(x - self.radius//2 + offset_x), int(y + self.radius//4 + offset_y), self.radius, self.radius//2)
-            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, self.radius//5))  # Back to original thickness
+            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, self.radius//5))
 
     def set_direction(self, direction):
         if self.direction is None:
@@ -73,8 +104,16 @@ class Player(MovableObject):
             new_y = self.y + dy * self.speed
             if not self.collision_checker(new_x, new_y, self.radius):
                 self.move(dx, dy)
+                # Add particles when moving
+                current_time = time.time()
+                if current_time - self.last_particle_time > 0.02:  # Spawn particle every 20ms
+                    self.particles.append(Particle(self.x, self.y, PARTICLE_COLOR))
+                    self.last_particle_time = current_time
             else:
                 self.direction = None
+
+        # Update particles
+        self.particles = [p for p in self.particles if p.update()]
 
 class Coin(GameObject):
     def __init__(self, x, y):

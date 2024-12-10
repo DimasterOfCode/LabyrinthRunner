@@ -33,5 +33,11 @@ THEME_TEXT = (255, 255, 255)  # White
 THEME_TEXT_SECONDARY = (200, 200, 200)  # Light gray
 
 # Player constants
-PLAYER_RADIUS = CELL_SIZE // 2.4  # Changed from CELL_SIZE // 2.6 to CELL_SIZE // 2.4
+PLAYER_RADIUS = CELL_SIZE // 2.2  # Changed from CELL_SIZE // 3.2 back to original CELL_SIZE // 3
 PLAYER_SPEED = 5  # Player movement speed
+
+# Particle constants
+PARTICLE_LIFETIME = 0.5  # seconds
+PARTICLE_FADE_SPEED = 5
+PARTICLE_SIZE = 3
+PARTICLE_COLOR = (135, 206, 235)  # Light blue
