@@ -3,7 +3,6 @@ import sys
 
 import pygame
 import pygame.gfxdraw
-
 from constants import WIDTH, HEIGHT, SCORE_AREA_HEIGHT, MAZE_WIDTH, CELL_SIZE, FPS
 from level_manager import LevelManager
 from sound_manager import SoundManager  # Add this import
@@ -11,7 +10,7 @@ from sound_manager import SoundManager  # Add this import
 from menu_mode import MenuMode
 from runner_customization_mode import RunnerCustomizationMode
 from level_editor_mode import LevelEditorMode
-from play_mode import PlayMode
+from play_mode import PlayMode, GameState  # Add GameState import here
 
 class Game:
     def __init__(self):
@@ -50,6 +49,10 @@ class Game:
         self.fps = 0
         self.fps_update_time = 0
 
+        # Fog of war settings
+        self.fog_radius = 3  # Number of cells visible around the player
+        self.fog_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+
     def play_game_over_sound(self):
         self.sound_manager.play_sound('game_over')
 
@@ -59,7 +62,49 @@ class Game:
     def set_mode(self, mode_name):
         self.current_mode = self.modes[mode_name]
         if mode_name == "play":
-            self.modes["play"].start_level()  # Changed this line
+            self.modes["play"].start_level()
+
+    def update_fog_of_war(self, player_x, player_y):
+        # Fill with completely opaque black (alpha = 255)
+        self.fog_surface.fill((0, 0, 0, 255))
+        # Create a fully transparent circle (alpha = 0) around the player
+        pygame.draw.circle(self.fog_surface, (0, 0, 0, 0), 
+                         (player_x + self.offset_x, player_y + self.offset_y), 
+                         self.fog_radius * CELL_SIZE)
+
+    def render(self, screen, interpolation):
+        if isinstance(self.current_mode, PlayMode):
+            # Get player position before rendering UI elements
+            player = self.current_mode.player
+            
+            # First render the game elements
+            screen.fill((0, 0, 0))
+            self.current_mode.render_maze(screen)
+            self.current_mode.render_game_objects(screen, interpolation)
+            
+            # Then render the fog of war
+            self.update_fog_of_war(player.x, player.y)
+            screen.blit(self.fog_surface, (0, 0))
+            
+            # Finally render the UI elements and overlays
+            self.current_mode.render_ui_elements(screen)
+            
+            # Render state-specific overlays
+            if self.current_mode.state == GameState.LEVEL_START:
+                self.current_mode.render_level_start_overlay(screen)
+            elif self.current_mode.state == GameState.PAUSED:
+                self.current_mode.render_pause_overlay(screen)
+            elif self.current_mode.state == GameState.GAME_OVER:
+                self.current_mode.render_game_over_overlay(screen)
+            elif self.current_mode.state == GameState.LEVEL_COMPLETE:
+                self.current_mode.render_level_complete_overlay(screen)
+        else:
+            # For non-PlayMode screens, just use their normal render
+            self.current_mode.render(screen, interpolation)
+
+        self.update_fps()
+        self.draw_fps(screen)
+        pygame.display.flip()
 
     def run(self):
         next_game_tick = pygame.time.get_ticks()
@@ -77,11 +122,7 @@ class Game:
             # Calculate interpolation for smooth rendering
             interpolation = (pygame.time.get_ticks() + self.SKIP_TICKS - next_game_tick) / self.SKIP_TICKS
 
-            self.current_mode.render(self.screen, interpolation)  # Call render method of current mode
-            self.update_fps()
-            self.draw_fps(self.screen)
-            pygame.display.flip()
-
+            self.render(self.screen, interpolation)
             self.clock.tick(FPS)  # Limit to 60 FPS
 
         pygame.quit()

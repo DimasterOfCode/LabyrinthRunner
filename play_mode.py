@@ -74,26 +74,33 @@ class PlayMode(GameMode):
             pass  # Maybe add a level complete animation here
 
     def render(self, screen, interpolation):
-        # Draw gradient background
-        for y in range(HEIGHT):
-            color = self.lerp_color(THEME_BACKGROUND, THEME_PRIMARY, y / HEIGHT)
-            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
-
-        # Render maze and other game elements
+        screen.fill((0, 0, 0))
+        
+        # Draw the base game elements
         self.render_maze(screen)
         self.render_game_objects(screen, interpolation)
         self.draw_score_area(screen)
-
-        # Render state-specific overlays
-        if self.state == GameState.PAUSED:
+        
+        # Draw appropriate overlay based on game state
+        if self.state == GameState.LEVEL_START:
+            self.render_level_start_overlay(screen)
+        elif self.state == GameState.PAUSED:
             self.render_pause_overlay(screen)
         elif self.state == GameState.GAME_OVER:
             self.render_game_over_overlay(screen)
         elif self.state == GameState.LEVEL_COMPLETE:
             self.render_level_complete_overlay(screen)
-        elif self.state == GameState.LEVEL_START:
-            self.render_level_start_overlay(screen)
+        
+        # Always draw UI on top
+        self.draw_ui(screen)
 
+    def render_game_elements(self, screen, interpolation):
+        screen.fill((0, 0, 0))
+        self.render_maze(screen)
+        self.render_game_objects(screen, interpolation)
+
+    def render_ui_elements(self, screen):
+        self.draw_score_area(screen)
         self.draw_ui(screen)
 
     def handle_event(self, event):

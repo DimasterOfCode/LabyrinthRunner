@@ -57,10 +57,16 @@ class LevelManager:
         return self.get_current_level()
 
     def new_level(self):
+        # Create an empty maze (walls around the edges, empty inside)
         new_maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
-        self.levels.append(Level(new_maze, len(self.levels) + 1))
+        for y in range(1, MAZE_HEIGHT-1):
+            for x in range(1, MAZE_WIDTH-1):
+                new_maze[y][x] = ' '
+                
+        new_level = Level(new_maze, len(self.levels) + 1, f"Level {len(self.levels) + 1}")
+        self.levels.append(new_level)
         self.current_level_index = len(self.levels) - 1
-        return self.get_current_level() 
+        return self.get_current_level()
 
 class Level:
     def __init__(self, maze, level_number, title=""):

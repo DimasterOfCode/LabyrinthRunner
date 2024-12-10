@@ -63,8 +63,11 @@ class LevelEditorMode(GameMode):
     def handle_keydown(self, event):
         if event.key == pygame.K_p:
             self.selected_item = Player.SYMBOL
-        elif event.key == pygame.K_n:
+        elif event.key == pygame.K_e:
             self.selected_item = Enemy.SYMBOL
+        elif event.key == pygame.K_n:
+            self.level_manager.new_level()
+            print("Created new level")
         elif event.key == pygame.K_s:
             self.selected_item = Star.SYMBOL
         elif event.key == pygame.K_m:
@@ -79,7 +82,7 @@ class LevelEditorMode(GameMode):
         elif event.key == pygame.K_l:
             self.level_manager.load_levels_from_file()
             print(f"Levels loaded from {self.level_manager.levels_file}")
-        elif event.key == pygame.K_e:
+        elif event.key == pygame.K_r:
             self.level_manager.get_current_level().maze = [['X' for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
         elif event.key == pygame.K_LEFTBRACKET:
             self.level_manager.prev_level()
@@ -112,14 +115,14 @@ class LevelEditorMode(GameMode):
         help_text = [
             "Dev Mode Hotkeys:",
             "P - Place Player",
-            "N - Place Enemy",
+            "E - Place Enemy",
             "S - Place Star",
             "M - Place Diamond",
             "W - Place Wall",
             "C - Clear/Empty cell",
             "SPACE - Save maze",
             "L - Load maze",
-            "E - Erase entire maze",
+            "R - Erase entire maze",
             "ESC - Exit Dev Mode",
             "",
             "Level Management:",
