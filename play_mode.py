@@ -44,18 +44,20 @@ class PlayMode(GameMode):
         # Get customization settings
         customization_mode = self.game.modes["runner_customization"]
         player_color = customization_mode.get_player_color()
-        player_face = customization_mode.current_face  # Get the selected face type
+        player_face = customization_mode.current_face
         
         # Create player with the selected face type
         self.player = Player(
             x=start_pos[0],
             y=start_pos[1],
-            radius=PLAYER_RADIUS,  # Changed from CELL_SIZE // 2 to PLAYER_RADIUS
+            radius=PLAYER_RADIUS,
             speed=PLAYER_SPEED,
             collision_checker=self.check_collision,
             color=player_color,
             face_type=player_face
         )
+        
+        # Reset all game objects
         self.enemy = self.create_enemy()
         self.star = self.create_star()
         self.diamonds = self.create_diamonds()
@@ -347,10 +349,8 @@ class PlayMode(GameMode):
                                     self.star.radius * 2)
             if player_rect.colliderect(star_rect):
                 self.state = GameState.LEVEL_COMPLETE
-                star_x, star_y = int(self.star.x // CELL_SIZE), int(self.star.y // CELL_SIZE)
-                self.get_current_maze()[star_y][star_x] = ' '
                 self.star = None
-                self.game.play_star_consume_sound()  # Add this line to play the sound
+                self.game.play_star_consume_sound()
 
         for diamond in self.diamonds[:]:
             diamond_rect = pygame.Rect(diamond.x - diamond.radius, 
@@ -358,8 +358,6 @@ class PlayMode(GameMode):
                                        diamond.radius * 2, 
                                        diamond.radius * 2)
             if player_rect.colliderect(diamond_rect):
-                diamond_x, diamond_y = int(diamond.x // CELL_SIZE), int(diamond.y // CELL_SIZE)
-                self.get_current_maze()[diamond_y][diamond_x] = ' '
                 self.diamonds.remove(diamond)
                 self.score += 10000
 
