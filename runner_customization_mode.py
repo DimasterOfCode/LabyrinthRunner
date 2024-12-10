@@ -67,9 +67,15 @@ class RunnerCustomizationMode(GameMode):
         title_rect = title.get_rect(midtop=(WIDTH//2, 50))
         screen.blit(title, title_rect)
         
-        # Draw current face with current color
-        face = self.font.render(self.faces[self.current_face], True, self.colors[self.color_index])
-        face_rect = face.get_rect(center=(WIDTH//2, HEIGHT//2 - 50))
+        # Draw current character preview (larger circle with face)
+        preview_radius = 40  # Larger radius for better visibility
+        preview_pos = (WIDTH//2, HEIGHT//2 - 80)  # Moved up a bit
+        pygame.draw.circle(screen, self.colors[self.color_index], preview_pos, preview_radius)
+        
+        # Draw current face larger (using a larger font for the face)
+        face_font = pygame.font.Font(None, 80)  # Larger font for the face
+        face = face_font.render(self.faces[self.current_face], True, BLACK)  # Changed color to BLACK for better visibility
+        face_rect = face.get_rect(center=preview_pos)
         screen.blit(face, face_rect)
         
         # Draw face selection buttons
