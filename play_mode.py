@@ -174,18 +174,25 @@ class PlayMode(GameMode):
         for y, row in enumerate(current_maze):
             for x, cell in enumerate(row):
                 if cell == object_class.SYMBOL:
+                    # Center the object in the cell
+                    obj_x = x * CELL_SIZE + (CELL_SIZE // 2)
+                    obj_y = y * CELL_SIZE + (CELL_SIZE // 2)
                     if object_class in [Player, Enemy]:
-                        return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+                        return object_class(obj_x, obj_y, *args)
                     else:
-                        return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+                        return object_class(obj_x, obj_y, *args)
         
-        empty_cells = [(x, y) for y, row in enumerate(current_maze) for x, cell in enumerate(row) if cell == ' ']
+        empty_cells = [(x, y) for y, row in enumerate(current_maze) 
+                       for x, cell in enumerate(row) if cell == ' ']
         if empty_cells:
             x, y = random.choice(empty_cells)
+            # Center the object in the cell
+            obj_x = x * CELL_SIZE + (CELL_SIZE // 2)
+            obj_y = y * CELL_SIZE + (CELL_SIZE // 2)
             if object_class in [Player, Enemy]:
-                return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+                return object_class(obj_x, obj_y, *args)
             else:
-                return object_class(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2, *args)
+                return object_class(obj_x, obj_y, *args)
         
         return None
 
@@ -199,7 +206,10 @@ class PlayMode(GameMode):
         for y, row in enumerate(current_maze):
             for x, cell in enumerate(row):
                 if cell == ' ':
-                    coins.append(Coin(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2))
+                    # Center the coin in the cell
+                    coin_x = x * CELL_SIZE + (CELL_SIZE // 2)
+                    coin_y = y * CELL_SIZE + (CELL_SIZE // 2)
+                    coins.append(Coin(coin_x, coin_y))
         return coins
 
     def create_enemy(self):
@@ -210,8 +220,10 @@ class PlayMode(GameMode):
                            for x, cell in enumerate(row) if cell == ' ']
             if empty_cells:
                 x, y = random.choice(empty_cells)
-                enemy = Enemy(x * CELL_SIZE + CELL_SIZE // 2, 
-                              y * CELL_SIZE + CELL_SIZE // 2, 
+                # Center the enemy in the cell
+                enemy_x = x * CELL_SIZE + (CELL_SIZE // 2)
+                enemy_y = y * CELL_SIZE + (CELL_SIZE // 2)
+                enemy = Enemy(enemy_x, enemy_y, 
                               CELL_SIZE // 2 - 1, ENEMY_SPEED, self.find_path)
         return enemy
 
@@ -224,7 +236,10 @@ class PlayMode(GameMode):
         for y, row in enumerate(current_maze):
             for x, cell in enumerate(row):
                 if cell == 'D':
-                    diamonds.append(Diamond(x * CELL_SIZE + CELL_SIZE // 2, y * CELL_SIZE + CELL_SIZE // 2))
+                    # Center the diamond in the cell
+                    diamond_x = x * CELL_SIZE + (CELL_SIZE // 2)
+                    diamond_y = y * CELL_SIZE + (CELL_SIZE // 2)
+                    diamonds.append(Diamond(diamond_x, diamond_y))
         return diamonds
 
     def next_level(self):
