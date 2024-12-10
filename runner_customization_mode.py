@@ -81,10 +81,10 @@ class RunnerCustomizationMode(GameMode):
         # Draw mouth based on current_face
         if self.current_face == "happy":
             smile_rect = (int(preview_pos[0] - preview_radius//2), int(preview_pos[1]), preview_radius, preview_radius//2)
-            pygame.draw.arc(screen, BLACK, smile_rect, 0, 3.14, max(1, preview_radius//5))  # Happy smile
+            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, preview_radius//5))  # Happy smile
         else:
             frown_rect = (int(preview_pos[0] - preview_radius//2), int(preview_pos[1] + preview_radius//4), preview_radius, preview_radius//2)
-            pygame.draw.arc(screen, BLACK, frown_rect, 3.14, 2 * 3.14, max(1, preview_radius//5))  # Sad frown
+            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, preview_radius//5))  # Sad frown
         
         # Draw face selection buttons
         pygame.draw.rect(screen, THEME_PRIMARY, self.happy_button)

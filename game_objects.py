@@ -57,10 +57,10 @@ class Player(MovableObject):
         # Draw mouth based on face type
         if self.face_type == "happy":
             smile_rect = (int(x - self.radius//2 + offset_x), int(y + offset_y), self.radius, self.radius//2)
-            pygame.draw.arc(screen, BLACK, smile_rect, 0, 3.14, max(1, self.radius//5))  # Happy smile
+            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius//5))  # Happy smile
         else:  # sad face
             frown_rect = (int(x - self.radius//2 + offset_x), int(y + self.radius//4 + offset_y), self.radius, self.radius//2)
-            pygame.draw.arc(screen, BLACK, frown_rect, 3.14, 2 * 3.14, max(1, self.radius//5))  # Sad frown
+            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, self.radius//5))  # Sad frown
 
     def set_direction(self, direction):
         if self.direction is None:

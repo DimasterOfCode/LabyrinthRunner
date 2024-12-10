@@ -76,6 +76,8 @@ class Game:
         if isinstance(self.current_mode, PlayMode):
             # Get player position before rendering UI elements
             player = self.current_mode.player
+            if player is None:
+                return
             
             # First render the game elements
             screen.fill((0, 0, 0))
