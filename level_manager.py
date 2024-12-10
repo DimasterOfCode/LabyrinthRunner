@@ -6,7 +6,7 @@ class LevelManager:
     def __init__(self, levels_file):
         self.levels_file = levels_file
         self.levels = []
-        self.current_level_index = 0
+        self.current_level_index = 2
 
     def load_or_generate_levels(self):
         if os.path.exists(self.levels_file):

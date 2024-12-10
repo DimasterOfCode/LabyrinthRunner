@@ -53,6 +53,15 @@ class Game:
         self.fog_radius = 3  # Number of cells visible around the player
         self.fog_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
 
+        # Camera/viewport settings
+        self.camera_x = 0
+        self.camera_y = 0
+        self.zoom = 2.0  # Fixed 2x zoom
+        
+        # Calculate the visible area (adjusted for zoom)
+        self.viewport_width = WIDTH / self.zoom
+        self.viewport_height = (HEIGHT - SCORE_AREA_HEIGHT) / self.zoom
+
     def play_game_over_sound(self):
         self.sound_manager.play_sound('game_over')
 
@@ -67,10 +76,18 @@ class Game:
     def update_fog_of_war(self, player_x, player_y):
         # Fill with completely opaque black (alpha = 255)
         self.fog_surface.fill((0, 0, 0, 255))
-        # Create a fully transparent circle (alpha = 0) around the player
+        
+        # Convert player world coordinates to screen coordinates
+        screen_x = (player_x - self.camera_x) * self.zoom
+        screen_y = (player_y - self.camera_y) * self.zoom + SCORE_AREA_HEIGHT
+        
+        # Scale the fog radius according to zoom
+        scaled_radius = self.fog_radius * CELL_SIZE * self.zoom
+        
+        # Create a fully transparent circle (alpha = 0) around the player's screen position
         pygame.draw.circle(self.fog_surface, (0, 0, 0, 0), 
-                         (player_x + self.offset_x, player_y + self.offset_y), 
-                         self.fog_radius * CELL_SIZE)
+                          (int(screen_x), int(screen_y)), 
+                          int(scaled_radius))
 
     def render(self, screen, interpolation):
         if isinstance(self.current_mode, PlayMode):

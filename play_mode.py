@@ -91,6 +91,9 @@ class PlayMode(GameMode):
             
         current_time = pygame.time.get_ticks()
         
+        # Update camera position to follow player
+        self.update_camera()
+        
         if self.state == GameState.LEVEL_START:
             self.remaining_time = max(0, (self.level_start_time + self.LEVEL_START_DELAY - current_time) // 1000)
             if current_time - self.level_start_time > self.LEVEL_START_DELAY:
@@ -154,6 +157,11 @@ class PlayMode(GameMode):
                 self.next_level()
             elif self.state == GameState.PLAYING:
                 self.handle_player_input(event)
+        
+        # Add zoom controls
+        if event.type == pygame.MOUSEWHEEL:
+            # Zoom in/out with mouse wheel
+            self.game.target_zoom = max(0.5, min(2.0, self.game.target_zoom + event.y * 0.1))
 
     def check_collision(self, x, y, radius):
         return MazeUtils.check_collision(self.get_current_maze(), x, y, radius)
@@ -243,30 +251,47 @@ class PlayMode(GameMode):
             screen.blit(title_text, title_rect)
 
     def render_maze(self, screen):
-        for y, row in enumerate(self.get_current_maze()):
-            for x, cell in enumerate(row):
-                if cell == ' ' or cell == 'S' or cell == '*' or cell == 'D':
-                    pygame.draw.rect(screen, WHITE, (x * CELL_SIZE + self.game.offset_x, y * CELL_SIZE + self.game.offset_y, CELL_SIZE, CELL_SIZE))
+        current_maze = self.get_current_maze()
+        
+        # Calculate visible range of cells based on camera position and zoom
+        start_x = max(0, int(self.game.camera_x // CELL_SIZE))
+        start_y = max(0, int(self.game.camera_y // CELL_SIZE))
+        end_x = min(MAZE_WIDTH, int((self.game.camera_x + self.game.viewport_width) // CELL_SIZE) + 1)
+        end_y = min(MAZE_HEIGHT, int((self.game.camera_y + self.game.viewport_height) // CELL_SIZE) + 1)
+
+        for y in range(start_y, end_y):
+            for x in range(start_x, end_x):
+                cell = current_maze[y][x]
+                if cell == 'X':  # Add wall rendering
+                    screen_x = (x * CELL_SIZE - self.game.camera_x) * self.game.zoom
+                    screen_y = (y * CELL_SIZE - self.game.camera_y) * self.game.zoom + SCORE_AREA_HEIGHT
+                    cell_size = CELL_SIZE * self.game.zoom
+                    pygame.draw.rect(screen, BLACK, (screen_x, screen_y, cell_size, cell_size))
+                elif cell in [' ', 'S', '*', 'D']:
+                    screen_x = (x * CELL_SIZE - self.game.camera_x) * self.game.zoom
+                    screen_y = (y * CELL_SIZE - self.game.camera_y) * self.game.zoom + SCORE_AREA_HEIGHT
+                    cell_size = CELL_SIZE * self.game.zoom
+                    pygame.draw.rect(screen, WHITE, (screen_x, screen_y, cell_size, cell_size))
 
     def render_game_objects(self, screen, interpolation):
         for coin in self.coins:
-            coin.draw(screen, self.game.offset_x, self.game.offset_y)
+            coin.draw(screen, self.game)
 
         if self.enemy:
             interpolated_x = self.enemy.x + (self.enemy.dx * interpolation)
             interpolated_y = self.enemy.y + (self.enemy.dy * interpolation)
-            self.enemy.draw(screen, self.game.offset_x, self.game.offset_y, interpolated_x, interpolated_y)
+            self.enemy.draw(screen, self.game, interpolated_x, interpolated_y)
 
         if self.player:
             interpolated_x = self.player.x + (self.player.dx * interpolation)
             interpolated_y = self.player.y + (self.player.dy * interpolation)
-            self.player.draw(screen, self.game.offset_x, self.game.offset_y, interpolated_x, interpolated_y)
+            self.player.draw(screen, self.game, interpolated_x, interpolated_y)
 
         if self.star:
-            self.star.draw(screen, self.game.offset_x, self.game.offset_y)
+            self.star.draw(screen, self.game)
 
         for diamond in self.diamonds:
-            diamond.draw(screen, self.game.offset_x, self.game.offset_y)
+            diamond.draw(screen, self.game)
 
     def draw_ui(self, screen):
         if self.state == GameState.PLAYING:
@@ -409,6 +434,15 @@ class PlayMode(GameMode):
         ready_text = self.font.render("Get ready!", True, THEME_TEXT)
         ready_rect = ready_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 120))
         screen.blit(ready_text, ready_rect)
+
+    def update_camera(self):
+        # Keep player centered by setting camera directly to player position minus half screen
+        target_x = self.player.x - (self.game.viewport_width / 2)
+        target_y = self.player.y - (self.game.viewport_height / 2)
+        
+        # Update camera position immediately instead of smoothly
+        self.game.camera_x = target_x
+        self.game.camera_y = target_y
 
     @staticmethod
     def lerp_color(color1, color2, t):

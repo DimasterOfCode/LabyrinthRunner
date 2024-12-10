@@ -9,8 +9,11 @@ class GameObject:
         self.y = y
         self.radius = radius
 
-    def draw(self, screen, offset_x, offset_y):
-        raise NotImplementedError("Subclass must implement abstract method")
+    def draw(self, screen, game):
+        # Convert world coordinates to screen coordinates
+        screen_x = (self.x - game.camera_x) * game.zoom
+        screen_y = (self.y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
+        return screen_x, screen_y
 
 class MovableObject(GameObject):
     def __init__(self, x, y, radius, speed):
@@ -25,10 +28,18 @@ class MovableObject(GameObject):
         self.x += self.dx
         self.y += self.dy
 
-    def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
+    def draw(self, screen, game, interpolated_x=None, interpolated_y=None):
         x = interpolated_x if interpolated_x is not None else self.x
         y = interpolated_y if interpolated_y is not None else self.y
-        pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
+        
+        # Convert world coordinates to screen coordinates
+        screen_x = (x - game.camera_x) * game.zoom
+        screen_y = (y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
+        
+        # Scale the radius according to zoom
+        scaled_radius = self.radius * game.zoom
+        
+        pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), int(scaled_radius))
 
 class Particle:
     def __init__(self, x, y, color):
@@ -48,11 +59,13 @@ class Particle:
         self.color[3] = max(0, 255 * (1 - age / PARTICLE_LIFETIME))
         return True
 
-    def draw(self, screen, offset_x, offset_y):
+    def draw(self, screen, game):
         if self.color[3] > 0:  # Only draw if not completely transparent
             surface = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
             pygame.draw.circle(surface, self.color, (self.size, self.size), self.size)
-            screen.blit(surface, (int(self.x + offset_x - self.size), int(self.y + offset_y - self.size)))
+            screen_x = (self.x - game.camera_x) * game.zoom
+            screen_y = (self.y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
+            screen.blit(surface, (int(screen_x - self.size), int(screen_y - self.size)))
 
 class Player(MovableObject):
     SYMBOL = 'S'
@@ -69,29 +82,48 @@ class Player(MovableObject):
         self.x += dx * self.speed
         self.y += dy * self.speed
 
-    def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
+    def draw(self, screen, game, interpolated_x=None, interpolated_y=None):
         # Draw particles first (behind player)
         for particle in self.particles:
-            particle.draw(screen, offset_x, offset_y)
+            particle.draw(screen, game)
             
-        # Draw player (existing code)
+        # Draw player
         x = interpolated_x if interpolated_x is not None else self.x
         y = interpolated_y if interpolated_y is not None else self.y
-        pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
         
-        # Draw eyes (existing code)
-        eye_radius = max(2, self.radius // 5)
-        eye_offset = self.radius // 3
-        pygame.draw.circle(screen, BLACK, (int(x - eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
-        pygame.draw.circle(screen, BLACK, (int(x + eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
+        # Convert world coordinates to screen coordinates
+        screen_x = (x - game.camera_x) * game.zoom
+        screen_y = (y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
         
-        # Draw mouth (existing code)
+        # Scale the radius according to zoom
+        scaled_radius = int(self.radius * game.zoom)  # Convert to int
+        
+        # Draw the player circle
+        pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), scaled_radius)
+        
+        # Draw eyes
+        eye_radius = max(2, scaled_radius // 5)
+        eye_offset = scaled_radius // 3
+        pygame.draw.circle(screen, BLACK, (int(screen_x - eye_offset), int(screen_y - eye_offset)), eye_radius)
+        pygame.draw.circle(screen, BLACK, (int(screen_x + eye_offset), int(screen_y - eye_offset)), eye_radius)
+        
+        # Draw mouth - ensure all rect coordinates are integers
         if self.face_type == "happy":
-            smile_rect = (int(x - self.radius//2 + offset_x), int(y + offset_y), self.radius, self.radius//2)
-            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, self.radius//5))
+            smile_rect = pygame.Rect(
+                int(screen_x - scaled_radius//2),
+                int(screen_y),
+                scaled_radius,
+                scaled_radius//2
+            )
+            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, scaled_radius//5))
         else:  # sad face
-            frown_rect = (int(x - self.radius//2 + offset_x), int(y + self.radius//4 + offset_y), self.radius, self.radius//2)
-            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, self.radius//5))
+            frown_rect = pygame.Rect(
+                int(screen_x - scaled_radius//2),
+                int(screen_y + scaled_radius//4),
+                scaled_radius,
+                scaled_radius//2
+            )
+            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, scaled_radius//5))
 
     def set_direction(self, direction):
         if self.direction is None:
@@ -121,8 +153,12 @@ class Coin(GameObject):
         self.y = y
         self.radius = COIN_RADIUS
 
-    def draw(self, screen, offset_x, offset_y):
-        pygame.draw.circle(screen, COIN_COLOR, (self.x + offset_x, self.y + offset_y), self.radius)
+    def draw(self, screen, game):
+        # Convert world coordinates to screen coordinates
+        screen_x = (self.x - game.camera_x) * game.zoom
+        screen_y = (self.y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
+        scaled_radius = int(self.radius * game.zoom)
+        pygame.draw.circle(screen, COIN_COLOR, (int(screen_x), int(screen_y)), scaled_radius)
 
 class Enemy(GameObject):
     SYMBOL = 'E'
@@ -133,45 +169,62 @@ class Enemy(GameObject):
         self.path = []
         self.target = None
         self.color = RED
-        self.dx = 0  # Add this line
-        self.dy = 0  # Add this line
+        self.dx = 0
+        self.dy = 0
 
     def update(self, player_pos):
         if not self.path:
             self.set_new_path(player_pos)
         self.move_along_path()
 
-    def draw(self, screen, offset_x, offset_y, interpolated_x=None, interpolated_y=None):
+    def draw(self, screen, game, interpolated_x=None, interpolated_y=None):
         x = interpolated_x if interpolated_x is not None else self.x
         y = interpolated_y if interpolated_y is not None else self.y
         
+        # Convert world coordinates to screen coordinates
+        screen_x = (x - game.camera_x) * game.zoom
+        screen_y = (y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
+        scaled_radius = int(self.radius * game.zoom)
+        
         # Draw the main body
-        pygame.draw.circle(screen, self.color, (int(x + offset_x), int(y + offset_y)), self.radius)
+        pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), scaled_radius)
         
         # Draw angry eyes
-        eye_radius = max(2, self.radius // 5)
-        eye_offset = self.radius // 3
-        pygame.draw.circle(screen, BLACK, (int(x - eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
-        pygame.draw.circle(screen, BLACK, (int(x + eye_offset + offset_x), int(y - eye_offset + offset_y)), eye_radius)
+        eye_radius = max(2, scaled_radius // 5)
+        eye_offset = scaled_radius // 3
+        pygame.draw.circle(screen, BLACK, 
+            (int(screen_x - eye_offset), int(screen_y - eye_offset)), 
+            eye_radius)
+        pygame.draw.circle(screen, BLACK, 
+            (int(screen_x + eye_offset), int(screen_y - eye_offset)), 
+            eye_radius)
         
         # Draw angry eyebrows
-        eyebrow_length = self.radius // 2
-        eyebrow_thickness = max(1, self.radius // 10)
+        eyebrow_length = scaled_radius // 2
+        eyebrow_thickness = max(1, scaled_radius // 10)
         pygame.draw.line(screen, BLACK, 
-                         (int(x - eye_offset - eyebrow_length//2 + offset_x), int(y - eye_offset - eye_radius + offset_y)),
-                         (int(x - eye_offset + eyebrow_length//2 + offset_x), int(y - eye_offset - eye_radius - eyebrow_thickness + offset_y)),
-                         eyebrow_thickness)
+            (int(screen_x - eye_offset - eyebrow_length//2), 
+             int(screen_y - eye_offset - eye_radius)),
+            (int(screen_x - eye_offset + eyebrow_length//2), 
+             int(screen_y - eye_offset - eye_radius - eyebrow_thickness)),
+            eyebrow_thickness)
         pygame.draw.line(screen, BLACK, 
-                         (int(x + eye_offset - eyebrow_length//2 + offset_x), int(y - eye_offset - eye_radius - eyebrow_thickness + offset_y)),
-                         (int(x + eye_offset + eyebrow_length//2 + offset_x), int(y - eye_offset - eye_radius + offset_y)),
-                         eyebrow_thickness)
+            (int(screen_x + eye_offset - eyebrow_length//2), 
+             int(screen_y - eye_offset - eye_radius - eyebrow_thickness)),
+            (int(screen_x + eye_offset + eyebrow_length//2), 
+             int(screen_y - eye_offset - eye_radius)),
+            eyebrow_thickness)
         
         # Draw angry mouth
-        mouth_width = self.radius
-        mouth_height = self.radius // 3
-        pygame.draw.arc(screen, BLACK, 
-                        (int(x - mouth_width//2 + offset_x), int(y + offset_y), mouth_width, mouth_height),
-                        3.14, 2 * 3.14, max(1, self.radius // 10))
+        mouth_width = scaled_radius
+        mouth_height = scaled_radius // 3
+        mouth_rect = pygame.Rect(
+            int(screen_x - mouth_width//2),
+            int(screen_y),
+            mouth_width,
+            mouth_height
+        )
+        pygame.draw.arc(screen, BLACK, mouth_rect, 3.14, 2 * 3.14, max(1, scaled_radius // 10))
 
     def set_new_path(self, player_pos):
         start = (int(self.x // CELL_SIZE), int(self.y // CELL_SIZE))
@@ -208,22 +261,32 @@ class Star(GameObject):
     def __init__(self, x, y, radius):
         super().__init__(x, y, radius)
 
-    def draw(self, screen, offset_x, offset_y):
+    def draw(self, screen, game):
+        # Convert world coordinates to screen coordinates
+        screen_x = (self.x - game.camera_x) * game.zoom
+        screen_y = (self.y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
+        scaled_radius = int(self.radius * game.zoom)
+        
         # Draw white background circle
-        pygame.draw.rect(screen, WHITE, (int(self.x + offset_x - self.radius), int(self.y + offset_y - self.radius), self.radius * 2, self.radius * 2))
+        pygame.draw.rect(screen, WHITE, (
+            int(screen_x - scaled_radius),
+            int(screen_y - scaled_radius),
+            scaled_radius * 2,
+            scaled_radius * 2
+        ))
         
         # Draw star
         pygame.draw.polygon(screen, GOLD, [
-            (self.x + offset_x, self.y - self.radius + offset_y),
-            (self.x + self.radius * 0.3 + offset_x, self.y + self.radius * 0.4 + offset_y),
-            (self.x + self.radius + offset_x, self.y + self.radius * 0.4 + offset_y),
-            (self.x + self.radius * 0.5 + offset_x, self.y + self.radius + offset_y),
-            (self.x + self.radius * 0.7 + offset_x, self.y + self.radius * 1.6 + offset_y),
-            (self.x + offset_x, self.y + self.radius * 1.2 + offset_y),
-            (self.x - self.radius * 0.7 + offset_x, self.y + self.radius * 1.6 + offset_y),
-            (self.x - self.radius * 0.5 + offset_x, self.y + self.radius + offset_y),
-            (self.x - self.radius + offset_x, self.y + self.radius * 0.4 + offset_y),
-            (self.x - self.radius * 0.3 + offset_x, self.y + self.radius * 0.4 + offset_y),
+            (screen_x, screen_y - scaled_radius),
+            (screen_x + scaled_radius * 0.3, screen_y + scaled_radius * 0.4),
+            (screen_x + scaled_radius, screen_y + scaled_radius * 0.4),
+            (screen_x + scaled_radius * 0.5, screen_y + scaled_radius),
+            (screen_x + scaled_radius * 0.7, screen_y + scaled_radius * 1.6),
+            (screen_x, screen_y + scaled_radius * 1.2),
+            (screen_x - scaled_radius * 0.7, screen_y + scaled_radius * 1.6),
+            (screen_x - scaled_radius * 0.5, screen_y + scaled_radius),
+            (screen_x - scaled_radius, screen_y + scaled_radius * 0.4),
+            (screen_x - scaled_radius * 0.3, screen_y + scaled_radius * 0.4),
         ])
 
 class Diamond(GameObject):
@@ -233,16 +296,26 @@ class Diamond(GameObject):
         self.y = y
         self.radius = CELL_SIZE // 2
 
-    def draw(self, screen, offset_x, offset_y):
+    def draw(self, screen, game):
+        # Convert world coordinates to screen coordinates
+        screen_x = (self.x - game.camera_x) * game.zoom
+        screen_y = (self.y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
+        scaled_radius = int(self.radius * game.zoom)
+        
         # Draw white background circle
-        pygame.draw.rect(screen, WHITE, (int(self.x + offset_x - self.radius), int(self.y + offset_y - self.radius), self.radius * 2, self.radius * 2))
+        pygame.draw.rect(screen, WHITE, (
+            int(screen_x - scaled_radius),
+            int(screen_y - scaled_radius),
+            scaled_radius * 2,
+            scaled_radius * 2
+        ))
         
         # Draw diamond
         points = [
-            (self.x + offset_x, self.y - self.radius + offset_y),
-            (self.x + self.radius + offset_x, self.y + offset_y),
-            (self.x + offset_x, self.y + self.radius + offset_y),
-            (self.x - self.radius + offset_x, self.y + offset_y),
+            (screen_x, screen_y - scaled_radius),
+            (screen_x + scaled_radius, screen_y),
+            (screen_x, screen_y + scaled_radius),
+            (screen_x - scaled_radius, screen_y),
         ]
         pygame.draw.polygon(screen, CYAN, points)
 
