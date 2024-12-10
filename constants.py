@@ -33,5 +33,5 @@ THEME_TEXT = (255, 255, 255)  # White
 THEME_TEXT_SECONDARY = (200, 200, 200)  # Light gray
 
 # Player constants
-PLAYER_RADIUS = CELL_SIZE // 2.5 # Changed from CELL_SIZE // 2 to CELL_SIZE // 2.5
+PLAYER_RADIUS = CELL_SIZE // 2.4  # Changed from CELL_SIZE // 2.6 to CELL_SIZE // 2.4
 PLAYER_SPEED = 5  # Player movement speed

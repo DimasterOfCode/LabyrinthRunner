@@ -46,11 +46,11 @@ class PlayMode(GameMode):
         player_color = customization_mode.get_player_color()
         player_face = customization_mode.current_face  # Get the selected face type
         
-        # Create player with the selected face type and larger radius
+        # Create player with the selected face type
         self.player = Player(
             x=start_pos[0],
             y=start_pos[1],
-            radius=CELL_SIZE // 2,  # Changed from PLAYER_RADIUS to CELL_SIZE // 2
+            radius=PLAYER_RADIUS,  # Changed from CELL_SIZE // 2 to PLAYER_RADIUS
             speed=PLAYER_SPEED,
             collision_checker=self.check_collision,
             color=player_color,
