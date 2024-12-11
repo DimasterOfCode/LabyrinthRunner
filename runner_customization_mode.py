@@ -90,12 +90,12 @@ class RunnerCustomizationMode(GameMode):
         preview_pos = (WIDTH//2, HEIGHT//2 - 100)
         preview_radius = 60
         
-        # Draw trail particles BEFORE the character, now on the left and higher
+        # Draw trail particles BEFORE the character, now even higher
         particle_spacing = 20
         base_particle_size = 18
         particle_size = base_particle_size
         start_x = preview_pos[0] - 280
-        particle_y = preview_pos[1] + 45
+        particle_y = preview_pos[1] + 5
         
         # Draw 3 trail particles
         for i in range(3):
