@@ -386,6 +386,10 @@ class PlayMode(GameMode):
             self.level_manager.current_level_index = 0
             self.init_game_objects()
 
+        # Update the score for the current level
+        current_level_number = self.level_manager.get_current_level().level_number
+        self.game.update_level_score(current_level_number, self.score)
+
     def handle_player_input(self, event):
         if event.key == pygame.K_RIGHT:
             self.player.set_direction((1, 0))

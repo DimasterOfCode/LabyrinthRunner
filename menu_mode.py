@@ -34,30 +34,43 @@ class MenuMode(GameMode):
         self.animation_offset = (self.animation_offset + self.animation_speed) % (2 * math.pi)
 
     def render(self, screen, interpolation):
-        # Create gradient background
-        for y in range(HEIGHT):
-            color = self.lerp_color(THEME_BACKGROUND, THEME_PRIMARY, y / HEIGHT)
-            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
-
-        # Draw animated circles
-        for i in range(10):
-            radius = 50 + 20 * math.sin(self.animation_offset + i * 0.5)
-            x = WIDTH * (i + 1) / 11
-            y = HEIGHT * (0.2 + 0.1 * math.sin(self.animation_offset + i * 0.7))
-            pygame.gfxdraw.aacircle(screen, int(x), int(y), int(radius), (255, 255, 255, 50))
-
+        screen.fill(THEME_BACKGROUND)
+        
         # Draw title
-        title = self.font.render(self.title, True, THEME_TEXT)
-        title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 4))
+        title = self.font.render("Labyrinth Runner", True, THEME_TEXT)
+        title_rect = title.get_rect(midtop=(WIDTH//2, 50))
         screen.blit(title, title_rect)
-
-        # Draw buttons
+        
+        # Draw buttons in the center
+        button_start_y = HEIGHT//2 - 100
+        
+        # Draw decorative circle with smiley face to the right
+        circle_center = (WIDTH//2 + 250, button_start_y + 60)  # Changed from +200 to +250 pixels to the right
+        circle_radius = 80  # Large circle for visibility
+        
+        # Draw main circle
+        pygame.draw.circle(screen, THEME_SECONDARY, circle_center, circle_radius, 4)  # Outlined circle
+        
+        # Draw eyes
+        eye_radius = 10
+        eye_offset = 25
+        pygame.draw.circle(screen, THEME_SECONDARY, 
+                          (circle_center[0] - eye_offset, circle_center[1] - 15), 
+                          eye_radius)
+        pygame.draw.circle(screen, THEME_SECONDARY, 
+                          (circle_center[0] + eye_offset, circle_center[1] - 15), 
+                          eye_radius)
+        
+        # Draw smile
+        smile_rect = pygame.Rect(circle_center[0] - 35, circle_center[1] - 20, 70, 50)
+        pygame.draw.arc(screen, THEME_SECONDARY, smile_rect, 0, math.pi, 4)
+        
+        # Draw buttons in center (unchanged)
         for i, button in enumerate(self.buttons):
             text = self.small_font.render(button["text"], True, THEME_TEXT)
-            button_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
+            button_rect = text.get_rect(center=(WIDTH//2, button_start_y + i * 60))
             
             if i == self.selected_button:
-                # Draw highlighted button
                 pygame.draw.rect(screen, THEME_SECONDARY, button_rect.inflate(20, 10), border_radius=5)
             
             screen.blit(text, button_rect)

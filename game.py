@@ -62,6 +62,14 @@ class Game:
         self.viewport_width = WIDTH / self.zoom
         self.viewport_height = (HEIGHT - SCORE_AREA_HEIGHT) / self.zoom
 
+        # Add score tracking
+        self.level_scores = {
+            1: 0,  # Level 1 score
+            2: 0,  # Level 2 score
+            3: 0   # Level 3 score
+            # Add more levels as needed
+        }
+
     def play_game_over_sound(self):
         self.sound_manager.play_sound('game_over')
 
@@ -165,6 +173,11 @@ class Game:
         # fps_rect = fps_surface.get_rect(midtop=(WIDTH // 2, 10))  # Position in mid top
         # screen.blit(fps_surface, fps_rect)
         pass
+
+    def update_level_score(self, level, score):
+        # Update the score for a level if it's higher than the current best
+        if score > self.level_scores[level]:
+            self.level_scores[level] = score
 
 
 if __name__ == "__main__":
