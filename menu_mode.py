@@ -44,28 +44,62 @@ class MenuMode(GameMode):
         # Draw buttons in the center
         button_start_y = HEIGHT//2 - 100
         
-        # Draw decorative circle with smiley face to the right
-        circle_center = (WIDTH//2 + 250, button_start_y + 60)  # Changed from +200 to +250 pixels to the right
-        circle_radius = 80  # Large circle for visibility
+        # Draw enemy circle on the left
+        enemy_center = (WIDTH//2 - 250, button_start_y + 60)
+        enemy_radius = 80
         
-        # Draw main circle
-        pygame.draw.circle(screen, THEME_SECONDARY, circle_center, circle_radius, 4)  # Outlined circle
+        # Draw main enemy circle (in red)
+        pygame.draw.circle(screen, (255, 0, 0), enemy_center, enemy_radius, 4)
         
-        # Draw eyes
+        # Draw evil eyes (shifted right to look at scared circle)
         eye_radius = 10
         eye_offset = 25
-        pygame.draw.circle(screen, THEME_SECONDARY, 
-                          (circle_center[0] - eye_offset, circle_center[1] - 15), 
+        eye_forward_shift = 10  # Shift eyes right to look at scared circle
+        pygame.draw.circle(screen, (255, 0, 0), 
+                          (enemy_center[0] - eye_offset + eye_forward_shift, enemy_center[1] - 15), 
                           eye_radius)
-        pygame.draw.circle(screen, THEME_SECONDARY, 
-                          (circle_center[0] + eye_offset, circle_center[1] - 15), 
+        pygame.draw.circle(screen, (255, 0, 0), 
+                          (enemy_center[0] + eye_offset + eye_forward_shift, enemy_center[1] - 15), 
                           eye_radius)
         
-        # Draw smile
-        smile_rect = pygame.Rect(circle_center[0] - 35, circle_center[1] - 20, 70, 50)
-        pygame.draw.arc(screen, THEME_SECONDARY, smile_rect, 0, math.pi, 4)
+        # Draw evil eyebrows (angled to look menacing)
+        eyebrow_length = 20
+        eyebrow_angle = -math.pi / 6
         
-        # Draw buttons in center (unchanged)
+        # Left and right eyebrows (shifted right)
+        for x_mult in [-1, 1]:
+            brow_start = (enemy_center[0] + x_mult * eye_offset + eye_forward_shift - x_mult * eyebrow_length * math.cos(eyebrow_angle),
+                         enemy_center[1] - 30 - eyebrow_length * math.sin(eyebrow_angle))
+            brow_end = (enemy_center[0] + x_mult * eye_offset + eye_forward_shift + x_mult * eyebrow_length * math.cos(eyebrow_angle),
+                       enemy_center[1] - 30 + eyebrow_length * math.sin(eyebrow_angle))
+            pygame.draw.line(screen, (255, 0, 0), brow_start, brow_end, 4)
+        
+        # Draw evil smile (shifted right)
+        smile_rect = pygame.Rect(enemy_center[0] - 35 + eye_forward_shift, enemy_center[1] - 30, 70, 50)
+        pygame.draw.arc(screen, (255, 0, 0), smile_rect, math.pi, 2 * math.pi, 4)
+        
+        # Draw scared circle on the right
+        circle_center = (WIDTH//2 + 250, button_start_y + 60)
+        circle_radius = 80
+        pygame.draw.circle(screen, THEME_SECONDARY, circle_center, circle_radius, 4)
+        
+        # Draw scared eyes (shifted left to look at enemy)
+        scared_eye_radius = 12
+        eye_backward_shift = 10  # Shift eyes left to look at enemy
+        pygame.draw.circle(screen, THEME_SECONDARY, 
+                          (circle_center[0] - eye_offset - eye_backward_shift, circle_center[1] - 15), 
+                          scared_eye_radius)
+        pygame.draw.circle(screen, THEME_SECONDARY, 
+                          (circle_center[0] + eye_offset - eye_backward_shift, circle_center[1] - 15), 
+                          scared_eye_radius)
+        
+        # Draw scared mouth (shifted left)
+        scared_mouth_radius = 10
+        pygame.draw.circle(screen, THEME_SECONDARY,
+                          (circle_center[0] - eye_backward_shift, circle_center[1] + 15),
+                          scared_mouth_radius)
+        
+        # Draw buttons
         for i, button in enumerate(self.buttons):
             text = self.small_font.render(button["text"], True, THEME_TEXT)
             button_rect = text.get_rect(center=(WIDTH//2, button_start_y + i * 60))

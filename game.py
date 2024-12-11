@@ -62,13 +62,8 @@ class Game:
         self.viewport_width = WIDTH / self.zoom
         self.viewport_height = (HEIGHT - SCORE_AREA_HEIGHT) / self.zoom
 
-        # Add score tracking
-        self.level_scores = {
-            1: 0,  # Level 1 score
-            2: 0,  # Level 2 score
-            3: 0   # Level 3 score
-            # Add more levels as needed
-        }
+        # Initialize level scores dictionary with default values
+        self.level_scores = {}  # Empty dictionary that will auto-populate as needed
 
     def play_game_over_sound(self):
         self.sound_manager.play_sound('game_over')
@@ -175,6 +170,10 @@ class Game:
         pass
 
     def update_level_score(self, level, score):
+        # If the level doesn't exist in scores yet, initialize it with 0
+        if level not in self.level_scores:
+            self.level_scores[level] = 0
+            
         # Update the score for a level if it's higher than the current best
         if score > self.level_scores[level]:
             self.level_scores[level] = score
