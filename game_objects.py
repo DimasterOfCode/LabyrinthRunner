@@ -1,6 +1,7 @@
 import time
 import pygame
 from constants import *
+import math
 
 
 class GameObject:
@@ -69,19 +70,58 @@ class Particle:
 
 class Player(MovableObject):
     SYMBOL = 'S'
-    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy", trail_color=PARTICLE_COLOR):
+    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy", trail_color=PARTICLE_COLOR, hat_type="none"):
         super().__init__(x, y, radius, speed)
         self.collision_checker = collision_checker
         self.direction = None
         self.color = color
         self.face_type = face_type
-        self.trail_color = trail_color  # Store trail color
+        self.trail_color = trail_color
+        self.hat_type = hat_type
         self.particles = []
         self.last_particle_time = time.time()
 
-    def move(self, dx, dy):
-        self.x += dx * self.speed
-        self.y += dy * self.speed
+    def draw_hat(self, screen, screen_x, screen_y, scaled_radius):
+        hat_y_offset = scaled_radius * 0.8
+        
+        if self.hat_type == "top_hat":
+            brim_width = scaled_radius * 1.8
+            hat_height = scaled_radius * 1.2
+            hat_width = scaled_radius * 1.2
+            
+            pygame.draw.ellipse(screen, BLACK,
+                (int(screen_x - brim_width//2),
+                 int(screen_y - scaled_radius - hat_y_offset),
+                 int(brim_width), int(scaled_radius * 0.3)))
+            
+            pygame.draw.rect(screen, BLACK,
+                (int(screen_x - hat_width//2),
+                 int(screen_y - scaled_radius - hat_y_offset - hat_height),
+                 int(hat_width), int(hat_height)))
+                
+        elif self.hat_type == "crown":
+            points = [
+                (int(screen_x - scaled_radius), int(screen_y - scaled_radius - hat_y_offset)),
+                (int(screen_x - scaled_radius), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.3)),
+                (int(screen_x - scaled_radius * 0.5), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.6)),
+                (int(screen_x), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.3)),
+                (int(screen_x + scaled_radius * 0.5), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.6)),
+                (int(screen_x + scaled_radius), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.3)),
+                (int(screen_x + scaled_radius), int(screen_y - scaled_radius - hat_y_offset)),
+            ]
+            pygame.draw.polygon(screen, GOLD, points)
+            
+        elif self.hat_type == "cap":
+            pygame.draw.ellipse(screen, self.color,
+                (int(screen_x - scaled_radius * 1.2),
+                 int(screen_y - scaled_radius - hat_y_offset + scaled_radius * 0.3),
+                 int(scaled_radius * 1.5), int(scaled_radius * 0.3)))
+            
+            pygame.draw.arc(screen, self.color,
+                (int(screen_x - scaled_radius),
+                 int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.5),
+                 int(scaled_radius * 2), int(scaled_radius * 1.2)),
+                math.pi, 2 * math.pi)
 
     def draw(self, screen, game, interpolated_x=None, interpolated_y=None):
         # Draw particles first (behind player)
@@ -101,6 +141,9 @@ class Player(MovableObject):
         
         # Draw the player circle
         pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), scaled_radius)
+        
+        # Draw the hat
+        self.draw_hat(screen, screen_x, screen_y, scaled_radius)
         
         # Draw eyes
         eye_radius = max(2, scaled_radius // 5)

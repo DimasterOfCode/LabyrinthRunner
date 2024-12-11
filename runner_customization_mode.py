@@ -26,6 +26,10 @@ class RunnerCustomizationMode(GameMode):
             "sad": "☹"
         }
         
+        # Hat customization
+        self.hats = ["none", "top_hat", "crown", "cap"]
+        self.current_hat = "none"
+        
         # Color customization
         self.colors = [
             (255, 255, 0),    # Yellow
@@ -74,9 +78,67 @@ class RunnerCustomizationMode(GameMode):
         self.next_trail_button = pygame.Rect(WIDTH//2 + self.button_spacing//2, 
                                            HEIGHT//2 + (self.button_height + self.button_spacing) * 2, 
                                            self.button_width, self.button_height)
+        
+        # Add hat selection buttons
+        self.prev_hat_button = pygame.Rect(WIDTH//2 - self.button_width - self.button_spacing//2,
+                                         HEIGHT//2 + (self.button_height + self.button_spacing) * 3,
+                                         self.button_width, self.button_height)
+        self.next_hat_button = pygame.Rect(WIDTH//2 + self.button_spacing//2,
+                                         HEIGHT//2 + (self.button_height + self.button_spacing) * 3,
+                                         self.button_width, self.button_height)
+        self.hat_index = 0
 
     def update(self):
         pass
+
+    def draw_hat(self, screen, pos, radius):
+        hat_y_offset = radius * 0.8  # How far up to draw the hat
+        
+        if self.current_hat == "top_hat":
+            # Draw top hat
+            brim_width = radius * 1.8
+            hat_height = radius * 1.2
+            hat_width = radius * 1.2
+            
+            # Draw brim
+            pygame.draw.ellipse(screen, BLACK,
+                (pos[0] - brim_width//2,
+                 pos[1] - radius - hat_y_offset,
+                 brim_width, radius * 0.3))
+            
+            # Draw top part
+            pygame.draw.rect(screen, BLACK,
+                (pos[0] - hat_width//2,
+                 pos[1] - radius - hat_y_offset - hat_height,
+                 hat_width, hat_height))
+                
+        elif self.current_hat == "crown":
+            # Draw crown
+            points = [
+                (pos[0] - radius, pos[1] - radius - hat_y_offset),  # Bottom left
+                (pos[0] - radius, pos[1] - radius - hat_y_offset - radius * 0.3),  # Top left
+                (pos[0] - radius * 0.5, pos[1] - radius - hat_y_offset - radius * 0.6),  # First peak
+                (pos[0], pos[1] - radius - hat_y_offset - radius * 0.3),  # Middle valley
+                (pos[0] + radius * 0.5, pos[1] - radius - hat_y_offset - radius * 0.6),  # Second peak
+                (pos[0] + radius, pos[1] - radius - hat_y_offset - radius * 0.3),  # Top right
+                (pos[0] + radius, pos[1] - radius - hat_y_offset),  # Bottom right
+            ]
+            pygame.draw.polygon(screen, GOLD, points)
+            
+        elif self.current_hat == "cap":
+            # Draw baseball cap
+            # Draw brim
+            pygame.draw.ellipse(screen, self.colors[self.color_index],
+                (pos[0] - radius * 1.2,
+                 pos[1] - radius - hat_y_offset + radius * 0.3,
+                 radius * 1.5, radius * 0.3))
+            
+            # Draw cap top
+            pygame.draw.arc(screen, self.colors[self.color_index],
+                (pos[0] - radius,
+                 pos[1] - radius - hat_y_offset - radius * 0.5,
+                 radius * 2, radius * 1.2),
+                math.pi, 2 * math.pi)
 
     def render(self, screen, interpolation):
         screen.fill(THEME_BACKGROUND)
@@ -122,6 +184,9 @@ class RunnerCustomizationMode(GameMode):
         
         # Draw the character
         pygame.draw.circle(screen, self.colors[self.color_index], preview_pos, preview_radius)
+        
+        # Draw the hat on the preview character
+        self.draw_hat(screen, preview_pos, preview_radius)
         
         # Draw eyes and mouth for preview
         eye_radius = max(3, preview_radius // 5)
@@ -199,6 +264,20 @@ class RunnerCustomizationMode(GameMode):
         trail_color_rect = trail_color_text.get_rect(midtop=(particles_center_x, trail_button_y + self.button_height + 10))
         screen.blit(trail_color_text, trail_color_rect)
 
+        # Draw hat selection buttons
+        pygame.draw.rect(screen, THEME_PRIMARY, self.prev_hat_button)
+        pygame.draw.rect(screen, THEME_PRIMARY, self.next_hat_button)
+        
+        prev_hat_text = self.font.render("< Hat", True, THEME_TEXT)
+        next_hat_text = self.font.render("Hat >", True, THEME_TEXT)
+        screen.blit(prev_hat_text, prev_hat_text.get_rect(center=self.prev_hat_button.center))
+        screen.blit(next_hat_text, next_hat_text.get_rect(center=self.next_hat_button.center))
+        
+        # Draw current hat name
+        hat_text = self.font.render(f"Hat: {self.current_hat.replace('_', ' ').title()}", True, THEME_TEXT)
+        hat_rect = hat_text.get_rect(midtop=(WIDTH//2, self.prev_hat_button.bottom + 10))
+        screen.blit(hat_text, hat_rect)
+
         # Draw back button
         back_text = self.font.render("Back to Menu", True, THEME_TEXT)
         back_rect = back_text.get_rect(midbottom=(WIDTH//2, HEIGHT - 20))
@@ -228,6 +307,14 @@ class RunnerCustomizationMode(GameMode):
             elif self.next_trail_button.collidepoint(mouse_pos):
                 self.trail_color_index = (self.trail_color_index + 1) % len(self.trail_colors)
             
+            # Hat selection
+            elif self.prev_hat_button.collidepoint(mouse_pos):
+                self.hat_index = (self.hat_index - 1) % len(self.hats)
+                self.current_hat = self.hats[self.hat_index]
+            elif self.next_hat_button.collidepoint(mouse_pos):
+                self.hat_index = (self.hat_index + 1) % len(self.hats)
+                self.current_hat = self.hats[self.hat_index]
+        
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.game.set_mode("menu")
@@ -240,3 +327,6 @@ class RunnerCustomizationMode(GameMode):
 
     def get_trail_color(self):
         return self.trail_colors[self.trail_color_index]
+
+    def get_player_hat(self):
+        return self.current_hat

@@ -201,7 +201,17 @@ class PlayMode(GameMode):
         return None
 
     def create_player(self, color):
-        player = self.create_game_object(Player, PLAYER_RADIUS, PLAYER_SPEED, self.check_collision, color)
+        customization_mode = self.game.modes["runner_customization"]
+        player = self.create_game_object(
+            Player, 
+            PLAYER_RADIUS, 
+            PLAYER_SPEED, 
+            self.check_collision, 
+            color,
+            customization_mode.current_face,
+            customization_mode.get_trail_color(),
+            customization_mode.current_hat
+        )
         return player
 
     def create_coins(self, num_coins):
