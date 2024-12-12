@@ -27,7 +27,7 @@ class RunnerCustomizationMode(GameMode):
         }
         
         # Hat customization
-        self.hats = ["none", "top_hat", "crown", "cap"]
+        self.hats = ["none", "top_hat", "crown"]
         self.current_hat = "none"
         
         # Color customization
@@ -92,7 +92,8 @@ class RunnerCustomizationMode(GameMode):
         pass
 
     def draw_hat(self, screen, pos, radius):
-        hat_y_offset = radius * 0.8  # How far up to draw the hat
+        # Reduce the offset even further to make hats sit much lower on the circle
+        hat_y_offset = radius * 0.05  # Changed from 0.2 to 0.05
         
         if self.current_hat == "top_hat":
             # Draw top hat
@@ -113,27 +114,46 @@ class RunnerCustomizationMode(GameMode):
                  hat_width, hat_height))
                 
         elif self.current_hat == "crown":
-            # Draw crown
-            points = [
-                (pos[0] - radius, pos[1] - radius - hat_y_offset),  # Bottom left
-                (pos[0] - radius, pos[1] - radius - hat_y_offset - radius * 0.3),  # Top left
-                (pos[0] - radius * 0.5, pos[1] - radius - hat_y_offset - radius * 0.6),  # First peak
-                (pos[0], pos[1] - radius - hat_y_offset - radius * 0.3),  # Middle valley
-                (pos[0] + radius * 0.5, pos[1] - radius - hat_y_offset - radius * 0.6),  # Second peak
-                (pos[0] + radius, pos[1] - radius - hat_y_offset - radius * 0.3),  # Top right
-                (pos[0] + radius, pos[1] - radius - hat_y_offset),  # Bottom right
+            # Draw crown with rounded points and curved base
+            # Base curve points
+            base_points = [
+                (pos[0] - radius, pos[1] - radius + hat_y_offset),  # Bottom left
+                (pos[0], pos[1] - radius + hat_y_offset + radius * 0.1),  # Bottom middle curve
+                (pos[0] + radius, pos[1] - radius + hat_y_offset),  # Bottom right
             ]
-            pygame.draw.polygon(screen, GOLD, points)
+            pygame.draw.lines(screen, GOLD, False, base_points, width=max(2, int(radius * 0.15)))
             
+            # Draw the points with circles on top
+            point_height = radius * 0.4
+            points = [
+                (int(pos[0] - radius * 0.8), point_height),  # First point
+                (int(pos[0] - radius * 0.4), point_height),  # Second point
+                (int(pos[0]), point_height),  # Middle point
+                (int(pos[0] + radius * 0.4), point_height),  # Fourth point
+                (int(pos[0] + radius * 0.8), point_height)  # Fifth point
+            ]
+            
+            # Draw the triangular points
+            for i, (px, h) in enumerate(points):
+                point_points = [
+                    (px, int(pos[1] - radius + hat_y_offset - h)),  # Top
+                    (px - radius * 0.15, int(pos[1] - radius + hat_y_offset)),  # Bottom left
+                    (px + radius * 0.15, int(pos[1] - radius + hat_y_offset))  # Bottom right
+                ]
+                pygame.draw.polygon(screen, GOLD, point_points)
+                
+                # Draw circles on top of points
+                circle_radius = max(2, int(radius * 0.1))
+                pygame.draw.circle(screen, GOLD, 
+                                 (px, int(pos[1] - radius + hat_y_offset - h)), 
+                                 circle_radius)
+        
         elif self.current_hat == "cap":
-            # Draw baseball cap
-            # Draw brim
             pygame.draw.ellipse(screen, self.colors[self.color_index],
                 (pos[0] - radius * 1.2,
                  pos[1] - radius - hat_y_offset + radius * 0.3,
                  radius * 1.5, radius * 0.3))
             
-            # Draw cap top
             pygame.draw.arc(screen, self.colors[self.color_index],
                 (pos[0] - radius,
                  pos[1] - radius - hat_y_offset - radius * 0.5,

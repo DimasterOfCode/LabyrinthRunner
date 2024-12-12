@@ -22,16 +22,25 @@ class MovableObject(GameObject):
         self.speed = speed
         self.dx = 0
         self.dy = 0
+        self.prev_x = x
+        self.prev_y = y
 
     def move(self, dx, dy):
         self.dx = dx * self.speed
         self.dy = dy * self.speed
+        self.prev_x = self.x
+        self.prev_y = self.y
         self.x += self.dx
         self.y += self.dy
 
-    def draw(self, screen, game, interpolated_x=None, interpolated_y=None):
-        x = interpolated_x if interpolated_x is not None else self.x
-        y = interpolated_y if interpolated_y is not None else self.y
+    def draw(self, screen, game, interpolation=None):
+        # Only interpolate if actually moving
+        if abs(self.dx) > 0 or abs(self.dy) > 0:
+            x = self.prev_x + (self.x - self.prev_x) * interpolation
+            y = self.prev_y + (self.y - self.prev_y) * interpolation
+        else:
+            x = self.x
+            y = self.y
         
         # Convert world coordinates to screen coordinates
         screen_x = (x - game.camera_x) * game.zoom
@@ -80,48 +89,7 @@ class Player(MovableObject):
         self.hat_type = hat_type
         self.particles = []
         self.last_particle_time = time.time()
-
-    def draw_hat(self, screen, screen_x, screen_y, scaled_radius):
-        hat_y_offset = scaled_radius * 0.8
-        
-        if self.hat_type == "top_hat":
-            brim_width = scaled_radius * 1.8
-            hat_height = scaled_radius * 1.2
-            hat_width = scaled_radius * 1.2
-            
-            pygame.draw.ellipse(screen, BLACK,
-                (int(screen_x - brim_width//2),
-                 int(screen_y - scaled_radius - hat_y_offset),
-                 int(brim_width), int(scaled_radius * 0.3)))
-            
-            pygame.draw.rect(screen, BLACK,
-                (int(screen_x - hat_width//2),
-                 int(screen_y - scaled_radius - hat_y_offset - hat_height),
-                 int(hat_width), int(hat_height)))
-                
-        elif self.hat_type == "crown":
-            points = [
-                (int(screen_x - scaled_radius), int(screen_y - scaled_radius - hat_y_offset)),
-                (int(screen_x - scaled_radius), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.3)),
-                (int(screen_x - scaled_radius * 0.5), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.6)),
-                (int(screen_x), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.3)),
-                (int(screen_x + scaled_radius * 0.5), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.6)),
-                (int(screen_x + scaled_radius), int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.3)),
-                (int(screen_x + scaled_radius), int(screen_y - scaled_radius - hat_y_offset)),
-            ]
-            pygame.draw.polygon(screen, GOLD, points)
-            
-        elif self.hat_type == "cap":
-            pygame.draw.ellipse(screen, self.color,
-                (int(screen_x - scaled_radius * 1.2),
-                 int(screen_y - scaled_radius - hat_y_offset + scaled_radius * 0.3),
-                 int(scaled_radius * 1.5), int(scaled_radius * 0.3)))
-            
-            pygame.draw.arc(screen, self.color,
-                (int(screen_x - scaled_radius),
-                 int(screen_y - scaled_radius - hat_y_offset - scaled_radius * 0.5),
-                 int(scaled_radius * 2), int(scaled_radius * 1.2)),
-                math.pi, 2 * math.pi)
+        self.is_moving = False
 
     def draw(self, screen, game, interpolated_x=None, interpolated_y=None):
         # Draw particles first (behind player)
@@ -141,9 +109,6 @@ class Player(MovableObject):
         
         # Draw the player circle
         pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), scaled_radius)
-        
-        # Draw the hat
-        self.draw_hat(screen, screen_x, screen_y, scaled_radius)
         
         # Draw eyes
         eye_radius = max(2, scaled_radius // 5)
@@ -174,6 +139,9 @@ class Player(MovableObject):
             self.direction = direction
 
     def update(self):
+        old_x = self.x
+        old_y = self.y
+        
         if self.direction:
             dx, dy = self.direction
             new_x = self.x + dx * self.speed
@@ -190,6 +158,9 @@ class Player(MovableObject):
 
         # Update particles
         self.particles = [p for p in self.particles if p.update()]
+
+        # Check if position changed
+        self.is_moving = (old_x != self.x or old_y != self.y)
 
 class Coin(GameObject):
     def __init__(self, x, y):

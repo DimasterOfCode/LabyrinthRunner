@@ -102,7 +102,13 @@ class Game:
             # First render the game elements
             screen.fill((0, 0, 0))
             self.current_mode.render_maze(screen)
-            self.current_mode.render_game_objects(screen, interpolation)
+            
+            # Only apply interpolation if the player is moving
+            if player.is_moving:
+                self.current_mode.render_game_objects(screen, interpolation)
+            else:
+                # Render without interpolation when player is stationary
+                self.current_mode.render_game_objects(screen, 0)
             
             # Then render the fog of war
             self.update_fog_of_war(player.x, player.y)
