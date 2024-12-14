@@ -15,7 +15,11 @@ from play_mode import PlayMode, GameState  # Add GameState import here
 class Game:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        # Store original dimensions
+        self.window_width = WIDTH
+        self.window_height = HEIGHT
+        self.is_fullscreen = False
+        self.screen = pygame.display.set_mode((self.window_width, self.window_height))
         pygame.display.set_caption("Labyrinth Runner")
         self.clock = pygame.time.Clock()
         
@@ -160,6 +164,15 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            elif event.type == pygame.KEYDOWN:
+                # Handle F11 key for fullscreen toggle
+                if event.key == pygame.K_F11:
+                    self.toggle_fullscreen()
+                # Handle Alt+Enter for fullscreen toggle
+                elif event.key == pygame.K_RETURN and (pygame.key.get_mods() & pygame.KMOD_ALT):
+                    self.toggle_fullscreen()
+                else:
+                    self.current_mode.handle_event(event)
             else:
                 self.current_mode.handle_event(event)
 
@@ -183,6 +196,31 @@ class Game:
         # Update the score for a level if it's higher than the current best
         if score > self.level_scores[level]:
             self.level_scores[level] = score
+
+    def toggle_fullscreen(self):
+        try:
+            self.is_fullscreen = not self.is_fullscreen
+            if self.is_fullscreen:
+                self.window_width, self.window_height = self.screen.get_size()
+                self.screen = pygame.display.set_mode(
+                    (0, 0),
+                    pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF
+                )
+            else:
+                self.screen = pygame.display.set_mode(
+                    (self.window_width, self.window_height),
+                    pygame.HWSURFACE | pygame.DOUBLEBUF
+                )
+            
+            current_width, current_height = self.screen.get_size()
+            self.fog_surface = pygame.Surface((current_width, current_height), pygame.SRCALPHA)
+        except pygame.error:
+            print("Failed to toggle fullscreen mode. Reverting to windowed mode.")
+            self.is_fullscreen = False
+            self.screen = pygame.display.set_mode(
+                (self.window_width, self.window_height),
+                pygame.HWSURFACE | pygame.DOUBLEBUF
+            )
 
 
 if __name__ == "__main__":
