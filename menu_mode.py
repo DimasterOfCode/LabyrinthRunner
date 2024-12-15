@@ -18,9 +18,12 @@ class MenuMode(GameMode):
     def __init__(self, game):
         super().__init__(game)
         self.title = "Labyrinth Runner"
-        self.title_font = pygame.font.Font(None, 80)
-        self.font = pygame.font.Font(None, 50)
-        self.small_font = pygame.font.Font(None, 30)
+        self.title_font_size = 80
+        self.menu_font_size = 50
+        self.small_font_size = 30
+        
+        # Initialize fonts (they'll be scaled in render)
+        self.update_fonts(WIDTH, HEIGHT)  # Initial creation
         
         # Menu items with descriptions
         self.buttons = [
@@ -64,6 +67,15 @@ class MenuMode(GameMode):
         self.stats_alpha = 0
         self.stats_fade_speed = 5
 
+    def update_fonts(self, screen_width, screen_height):
+        # Calculate scale factor based on screen dimensions
+        scale = min(screen_width/WIDTH, screen_height/HEIGHT)
+        
+        # Create scaled fonts
+        self.title_font = pygame.font.Font(None, int(self.title_font_size * scale))
+        self.font = pygame.font.Font(None, int(self.menu_font_size * scale))
+        self.small_font = pygame.font.Font(None, int(self.small_font_size * scale))
+
     def update(self):
         # Update menu animations
         self.animation_offset = (self.animation_offset + self.animation_speed) % (2 * math.pi)
@@ -99,6 +111,9 @@ class MenuMode(GameMode):
         # Get current screen dimensions
         screen_width = screen.get_width()
         screen_height = screen.get_height()
+        
+        # Update fonts for current screen size
+        self.update_fonts(screen_width, screen_height)
         
         # Draw animated background
         screen.fill(THEME_BACKGROUND)
