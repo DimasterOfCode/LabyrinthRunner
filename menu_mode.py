@@ -40,12 +40,13 @@ class MenuMode(GameMode):
                 "description": "Personalize your runner's appearance"
             },
             {
-                "text": "Quit",
-                "action": lambda: setattr(self.game, 'running', False),
-                "description": "Exit the game"
+                "text": "Help",
+                "action": lambda: self.toggle_help(),
+                "description": "View game controls and instructions"
             }
         ]
         self.selected_button = 0
+        self.show_help_overlay = False
         
         # Animation variables
         self.animation_offset = 0
@@ -138,9 +139,22 @@ class MenuMode(GameMode):
             
             screen.blit(text, button_rect)
         
-        # Draw game stats with fade effect
-        if self.stats_alpha > 0:
-            self.draw_stats(screen)
+        # Draw help overlay if active
+        if self.show_help_overlay:
+            self.draw_help_overlay(screen)
+        
+        # Draw current level and high score
+        stats_text = [
+            f"Current Level: {self.game.level_manager.get_current_level().level_number}/{len(self.game.level_manager.levels)}",
+            f"High Score: {max(self.game.level_scores.values()) if self.game.level_scores else 0}"
+        ]
+        
+        y_pos = HEIGHT - 60
+        for text in stats_text:
+            text_surface = self.small_font.render(text, True, THEME_TEXT)
+            text_rect = text_surface.get_rect(center=(WIDTH//2, y_pos))
+            screen.blit(text_surface, text_rect)
+            y_pos += 25
 
     def draw_characters(self, screen):
         # Draw enemy circle on the left
@@ -206,42 +220,60 @@ class MenuMode(GameMode):
                          (circle_center[0] - eye_backward_shift, circle_center[1] + 15 + bounce),
                          eye_radius)
 
-    def draw_stats(self, screen):
-        stats_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        
-        # Get current level and high scores
-        current_level = self.game.level_manager.get_current_level().level_number
-        total_levels = len(self.game.level_manager.levels)
-        high_score = max(self.game.level_scores.values()) if self.game.level_scores else 0
-        
-        # Draw stats
-        stats_text = [
-            f"Current Level: {current_level}/{total_levels}",
-            f"High Score: {high_score}",
-            f"Press ENTER to select",
-            f"Use ↑↓ arrow keys to move"
+    def draw_help_overlay(self, screen):
+        # Create semi-transparent overlay
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))  # Dark semi-transparent background
+        screen.blit(overlay, (0, 0))
+
+        # Help title
+        help_title = self.font.render("Game Controls", True, THEME_TEXT)
+        title_rect = help_title.get_rect(midtop=(WIDTH//2, HEIGHT//4))
+        screen.blit(help_title, title_rect)
+
+        # Help instructions
+        instructions = [
+            "Menu Navigation:",
+            "↑↓ Arrow Keys - Move selection",
+            "ENTER - Select option",
+            "",
+            "In-Game Controls:",
+            "Arrow Keys - Move player",
+            "ESC - Pause game/Return to menu",
+            "F11 - Toggle fullscreen",
+            "",
+            "Press ESC to close help"
         ]
-        
-        y_pos = HEIGHT - 120
-        for text in stats_text:
-            text_surface = self.small_font.render(text, True, (*THEME_TEXT[:3], self.stats_alpha))
-            text_rect = text_surface.get_rect(center=(WIDTH//2, y_pos))
-            stats_surface.blit(text_surface, text_rect)
-            y_pos += 25
-        
-        screen.blit(stats_surface, (0, 0))
+
+        y_pos = title_rect.bottom + 30
+        for instruction in instructions:
+            if instruction == "":
+                y_pos += 10  # Add extra space for empty lines
+                continue
+            text = self.small_font.render(instruction, True, THEME_TEXT)
+            text_rect = text.get_rect(midtop=(WIDTH//2, y_pos))
+            screen.blit(text, text_rect)
+            y_pos += 30
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                self.selected_button = (self.selected_button - 1) % len(self.buttons)
-                self.game.sound_manager.play_sound('menu_move')
-            elif event.key == pygame.K_DOWN:
-                self.selected_button = (self.selected_button + 1) % len(self.buttons)
-                self.game.sound_manager.play_sound('menu_move')
-            elif event.key == pygame.K_RETURN:
-                self.game.sound_manager.play_sound('menu_select')
-                self.buttons[self.selected_button]["action"]()
+            if self.show_help_overlay:
+                if event.key == pygame.K_ESCAPE:
+                    self.show_help_overlay = False
+                    self.game.sound_manager.play_sound('menu_move')
+            else:
+                if event.key == pygame.K_UP:
+                    self.selected_button = (self.selected_button - 1) % len(self.buttons)
+                    self.game.sound_manager.play_sound('menu_move')
+                elif event.key == pygame.K_DOWN:
+                    self.selected_button = (self.selected_button + 1) % len(self.buttons)
+                    self.game.sound_manager.play_sound('menu_move')
+                elif event.key == pygame.K_RETURN:
+                    self.game.sound_manager.play_sound('menu_select')
+                    self.buttons[self.selected_button]["action"]()
+
+    def toggle_help(self):
+        self.show_help_overlay = not self.show_help_overlay
 
     @staticmethod
     def lerp_color(color1, color2, t):
