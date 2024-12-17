@@ -29,7 +29,7 @@ class RunnerCustomizationMode(GameMode):
         ]
 
         # Player score
-        self.player_score = 200  # Example score
+        self.player_score = 10000  # Example score
 
         # Animation
         self.animation_offset = 0
@@ -112,6 +112,9 @@ class RunnerCustomizationMode(GameMode):
                                          HEIGHT//2 + (self.button_height + self.button_spacing) * 3,
                                          self.button_width, self.button_height)
         self.hat_index = 0
+
+    def calculate_points(self):
+        return self.player_score // 100  # Convert score to points
 
     def update(self):
         pass
@@ -202,7 +205,7 @@ class RunnerCustomizationMode(GameMode):
         screen.blit(title, title_rect)
         
         # Display player points in the top right corner
-        points_text = self.small_font.render(f"{self.player_score} points", True, THEME_TEXT)
+        points_text = self.small_font.render(f"{self.calculate_points()} points", True, THEME_TEXT)
         points_rect = points_text.get_rect(topright=(screen_width - 20, 20))
         screen.blit(points_text, points_rect)
         
@@ -415,8 +418,8 @@ class RunnerCustomizationMode(GameMode):
     def check_accessory_purchase(self, mouse_pos):
         for button_rect, accessory in self.accessory_rects:
             if button_rect.collidepoint(mouse_pos):
-                if not accessory["unlocked"] and self.player_score >= accessory['price']:
-                    self.player_score -= accessory['price']
+                if not accessory["unlocked"] and self.calculate_points() >= accessory['price']:
+                    self.player_score -= accessory['price'] * 100  # Convert points back to score
                     accessory["unlocked"] = True
                     print(f"Unlocked {accessory['name']}")
                 elif accessory["unlocked"]:
