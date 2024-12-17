@@ -37,7 +37,12 @@ class RunnerCustomizationMode(GameMode):
             (255, 0, 0),      # Red
             (0, 255, 255),    # Cyan
             (255, 165, 0),    # Orange
-            (255, 192, 203)   # Pink
+            (255, 192, 203),  # Pink
+            (128, 0, 128),    # Purple
+            (0, 0, 255),      # Blue
+            (255, 255, 255),  # White
+            (0, 0, 0),        # Black
+            (192, 192, 192)   # Silver
         ]
         self.color_index = 0
         
@@ -49,6 +54,11 @@ class RunnerCustomizationMode(GameMode):
             (255, 215, 0),    # Gold
             (230, 230, 250),  # Lavender
             (255, 255, 255),  # White
+            (255, 69, 0),     # Red-Orange
+            (75, 0, 130),     # Indigo
+            (255, 20, 147),   # Deep Pink
+            (0, 128, 128),    # Teal
+            (240, 230, 140)   # Khaki
         ]
         self.trail_color_index = 0
         
@@ -161,6 +171,14 @@ class RunnerCustomizationMode(GameMode):
                 math.pi, 2 * math.pi)
 
     def render(self, screen, interpolation):
+        screen_width = screen.get_width()
+        screen_height = screen.get_height()
+
+        # Create a gradient background
+        for y in range(screen_height):
+            color = self.lerp_color((20, 20, 40), (50, 50, 80), y / screen_height)
+            pygame.draw.line(screen, color, (0, y), (screen_width, y))
+
         screen.fill(THEME_BACKGROUND)
         
         # Draw title
@@ -350,3 +368,7 @@ class RunnerCustomizationMode(GameMode):
 
     def get_player_hat(self):
         return self.current_hat
+
+    @staticmethod
+    def lerp_color(color1, color2, t):
+        return tuple(int(a + (b - a) * t) for a, b in zip(color1, color2))
