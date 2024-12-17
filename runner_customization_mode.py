@@ -18,7 +18,22 @@ class RunnerCustomizationMode(GameMode):
     def __init__(self, game):
         super().__init__(game)
         self.font = pygame.font.Font(None, 36)
+        self.large_font = pygame.font.Font(None, 32)
+        self.small_font = pygame.font.Font(None, 24)
         
+        # Accessories and prices
+        self.accessories = [
+            {"name": "Top Hat", "price": 100, "unlocked": False},
+            {"name": "Crown", "price": 150, "unlocked": False},
+            {"name": "Cap", "price": 50, "unlocked": False}
+        ]
+
+        # Player score
+        self.player_score = 200  # Example score
+
+        # Animation
+        self.animation_offset = 0
+
         # Face customization
         self.current_face = "happy"
         self.faces = {
@@ -174,9 +189,9 @@ class RunnerCustomizationMode(GameMode):
         screen_width = screen.get_width()
         screen_height = screen.get_height()
 
-        # Create a gradient background
+        # Create a moving gradient background
         for y in range(screen_height):
-            color = self.lerp_color((20, 20, 40), (50, 50, 80), y / screen_height)
+            color = self.lerp_color((20, 20, 40), (50, 50, 80), (y + self.animation_offset * 50) % screen_height / screen_height)
             pygame.draw.line(screen, color, (0, y), (screen_width, y))
 
         screen.fill(THEME_BACKGROUND)
@@ -185,6 +200,11 @@ class RunnerCustomizationMode(GameMode):
         title = self.font.render("Customize Your Runner", True, THEME_TEXT)
         title_rect = title.get_rect(midtop=(WIDTH//2, 50))
         screen.blit(title, title_rect)
+        
+        # Display player points in the top right corner
+        points_text = self.small_font.render(f"{self.player_score} points", True, THEME_TEXT)
+        points_rect = points_text.get_rect(topright=(screen_width - 20, 20))
+        screen.blit(points_text, points_rect)
         
         # Draw current character preview (larger circle with face)
         preview_pos = (WIDTH//2, HEIGHT//2 - 100)
@@ -316,14 +336,37 @@ class RunnerCustomizationMode(GameMode):
         hat_rect = hat_text.get_rect(midtop=(WIDTH//2, self.prev_hat_button.bottom + 10))
         screen.blit(hat_text, hat_rect)
 
+        # Draw accessories shop
+        self.draw_accessories_shop(screen, preview_pos)
+
         # Draw back button
         back_text = self.font.render("Back to Menu", True, THEME_TEXT)
         back_rect = back_text.get_rect(midbottom=(WIDTH//2, HEIGHT - 20))
         screen.blit(back_text, back_rect)
 
+    def draw_accessories_shop(self, screen, preview_pos):
+        x_offset = 120
+        y_offset = 50
+        self.accessory_rects = []  # Store rects for click detection
+        for accessory in self.accessories:
+            accessory_text = f"{accessory['name']} - {accessory['price']} pts"
+            text_surface = self.large_font.render(accessory_text, True, THEME_TEXT)
+            text_rect = text_surface.get_rect(midleft=(preview_pos[0] + x_offset, preview_pos[1] + y_offset))
+            screen.blit(text_surface, text_rect)
+
+            # Create button
+            button_text = "Unlock" if not accessory["unlocked"] else "Unlocked"
+            button_surface = self.small_font.render(button_text, True, THEME_TEXT)
+            button_rect = button_surface.get_rect(midleft=(text_rect.right + 10, text_rect.centery))
+            screen.blit(button_surface, button_rect)
+
+            self.accessory_rects.append((button_rect, accessory))  # Store rect and accessory
+            y_offset += 50
+
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
+            self.check_accessory_purchase(mouse_pos)
             
             # Face selection
             if self.happy_button.collidepoint(mouse_pos):
@@ -368,6 +411,18 @@ class RunnerCustomizationMode(GameMode):
 
     def get_player_hat(self):
         return self.current_hat
+
+    def check_accessory_purchase(self, mouse_pos):
+        for button_rect, accessory in self.accessory_rects:
+            if button_rect.collidepoint(mouse_pos):
+                if not accessory["unlocked"] and self.player_score >= accessory['price']:
+                    self.player_score -= accessory['price']
+                    accessory["unlocked"] = True
+                    print(f"Unlocked {accessory['name']}")
+                elif accessory["unlocked"]:
+                    print(f"{accessory['name']} is already unlocked")
+                else:
+                    print("Not enough points")
 
     @staticmethod
     def lerp_color(color1, color2, t):
