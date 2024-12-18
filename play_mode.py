@@ -33,7 +33,7 @@ class PlayMode(GameMode):
         self.update_fonts(WIDTH, HEIGHT)  # Initial creation
         self.state = GameState.LEVEL_START
         self.level_start_time = 0
-        self.LEVEL_START_DELAY = 2000  # 2 seconds delay
+        self.LEVEL_START_DELAY = LEVEL_START_DELAY  # Use constant instead of magic number
         self.remaining_time = 0
 
     def update_fonts(self, screen_width, screen_height):
@@ -134,19 +134,10 @@ class PlayMode(GameMode):
         screen.fill((0, 0, 0))
         
         # Draw the base game elements
-        self.render_maze(screen)
-        self.render_game_objects(screen, interpolation)
-        self.draw_score_area(screen)
+        self.render_game_elements(screen, interpolation)
         
-        # Draw appropriate overlay based on game state
-        if self.state == GameState.LEVEL_START:
-            self.render_level_start_overlay(screen)
-        elif self.state == GameState.PAUSED:
-            self.render_pause_overlay(screen)
-        elif self.state == GameState.GAME_OVER:
-            self.render_game_over_overlay(screen)
-        elif self.state == GameState.LEVEL_COMPLETE:
-            self.render_level_complete_overlay(screen)
+        # Draw state-specific overlay
+        self.render_state_overlay(screen)
         
         # Always draw UI on top
         self.draw_ui(screen)
@@ -155,6 +146,7 @@ class PlayMode(GameMode):
         screen.fill((0, 0, 0))
         self.render_maze(screen)
         self.render_game_objects(screen, interpolation)
+        self.draw_score_area(screen)
 
     def render_ui_elements(self, screen):
         self.draw_score_area(screen)
@@ -363,52 +355,25 @@ class PlayMode(GameMode):
             screen.blit(text, text_rect)
 
     def collect_coins(self):
-        player_rect = pygame.Rect(self.player.x - self.player.radius, 
-                                  self.player.y - self.player.radius,  
-                                  self.player.radius * 2, 
-                                  self.player.radius * 2)
-        
         for coin in self.coins[:]:
-            coin_rect = pygame.Rect(coin.x - coin.radius, 
-                                    coin.y - coin.radius, 
-                                    coin.radius * 2, 
-                                    coin.radius * 2)
-            if player_rect.colliderect(coin_rect):
+            if self.check_object_collision(self.player, coin):
                 self.coins.remove(coin)
-                self.score += 10
+                self.score += COIN_VALUE
         
-        if self.star:
-            star_rect = pygame.Rect(self.star.x - self.star.radius, 
-                                    self.star.y - self.star.radius, 
-                                    self.star.radius * 2, 
-                                    self.star.radius * 2)
-            if player_rect.colliderect(star_rect):
-                self.state = GameState.LEVEL_COMPLETE
-                self.star = None
-                self.game.play_star_consume_sound()
+        if self.star and self.check_object_collision(self.player, self.star):
+            self.state = GameState.LEVEL_COMPLETE
+            self.star = None
+            self.game.play_star_consume_sound()
 
         for diamond in self.diamonds[:]:
-            diamond_rect = pygame.Rect(diamond.x - diamond.radius, 
-                                       diamond.y - diamond.radius, 
-                                       diamond.radius * 2, 
-                                       diamond.radius * 2)
-            if player_rect.colliderect(diamond_rect):
+            if self.check_object_collision(self.player, diamond):
                 self.diamonds.remove(diamond)
-                self.score += 10000
+                self.score += DIAMOND_VALUE
 
     def check_enemy_collision(self):
-        if self.enemy:
-            player_rect = pygame.Rect(self.player.x - self.player.radius, 
-                                      self.player.y - self.player.radius,
-                                      self.player.radius * 2, 
-                                      self.player.radius * 2)
-            enemy_rect = pygame.Rect(self.enemy.x - self.enemy.radius, 
-                                     self.enemy.y - self.enemy.radius,
-                                     self.enemy.radius * 2, 
-                                     self.enemy.radius * 2)
-            if player_rect.colliderect(enemy_rect):
-                self.state = GameState.GAME_OVER
-                self.game.play_game_over_sound()
+        if self.enemy and self.check_object_collision(self.player, self.enemy):
+            self.state = GameState.GAME_OVER
+            self.game.play_game_over_sound()
 
     def check_level_complete(self):
         if not self.coins and not self.star and not self.diamonds:
@@ -507,6 +472,28 @@ class PlayMode(GameMode):
         # Update camera position immediately instead of smoothly
         self.game.camera_x = target_x
         self.game.camera_y = target_y
+
+    def check_object_collision(self, obj1, obj2):
+        """Returns True if two game objects are colliding"""
+        rect1 = pygame.Rect(obj1.x - obj1.radius, 
+                          obj1.y - obj1.radius,
+                          obj1.radius * 2, 
+                          obj1.radius * 2)
+        rect2 = pygame.Rect(obj2.x - obj2.radius, 
+                          obj2.y - obj2.radius,
+                          obj2.radius * 2, 
+                          obj2.radius * 2)
+        return rect1.colliderect(rect2)
+
+    def render_state_overlay(self, screen):
+        overlays = {
+            GameState.LEVEL_START: self.render_level_start_overlay,
+            GameState.PAUSED: self.render_pause_overlay,
+            GameState.GAME_OVER: self.render_game_over_overlay,
+            GameState.LEVEL_COMPLETE: self.render_level_complete_overlay
+        }
+        if self.state in overlays:
+            overlays[self.state](screen)
 
     @staticmethod
     def lerp_color(color1, color2, t):
