@@ -129,6 +129,9 @@ class LevelEditorMode(GameMode):
                     pygame.draw.rect(screen, GOLD, rect)
                 elif cell == 'D':
                     pygame.draw.rect(screen, CYAN, rect)
+                
+                # Draw grid lines
+                pygame.draw.rect(screen, (128, 128, 128), rect, 1)  # Gray color, 1 pixel width
 
     def draw_help_overlay(self, screen):
         screen_width, screen_height = screen.get_size()
