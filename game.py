@@ -120,16 +120,7 @@ class Game:
             
             # Finally render the UI elements and overlays
             self.current_mode.render_ui_elements(screen)
-            
-            # Render state-specific overlays
-            if self.current_mode.state == GameState.LEVEL_START:
-                self.current_mode.render_level_start_overlay(screen)
-            elif self.current_mode.state == GameState.PAUSED:
-                self.current_mode.render_pause_overlay(screen)
-            elif self.current_mode.state == GameState.GAME_OVER:
-                self.current_mode.render_game_over_overlay(screen)
-            elif self.current_mode.state == GameState.LEVEL_COMPLETE:
-                self.current_mode.render_level_complete_overlay(screen)
+            self.current_mode.render_state_overlay(screen)
         else:
             # For non-PlayMode screens, just use their normal render
             self.current_mode.render(screen, interpolation)
