@@ -26,12 +26,26 @@ class PlayMode(GameMode):
         super().__init__(game)
         self.level_manager = level_manager
         self.player = None
-        self.font = pygame.font.Font(None, 36)
-        self.title_font = pygame.font.Font(None, 48)
+        # Initialize fonts with default sizes
+        self.title_font_size = 48
+        self.normal_font_size = 36
+        self.small_font_size = 24
+        self.update_fonts(WIDTH, HEIGHT)  # Initial creation
         self.state = GameState.LEVEL_START
         self.level_start_time = 0
         self.LEVEL_START_DELAY = 2000  # 2 seconds delay
         self.remaining_time = 0
+
+    def update_fonts(self, screen_width, screen_height):
+        """Update font sizes based on screen dimensions"""
+        scale = min(screen_width/WIDTH, screen_height/HEIGHT)
+        self.title_font = pygame.font.Font(None, int(self.title_font_size * scale))
+        self.font = pygame.font.Font(None, int(self.normal_font_size * scale))
+        self.small_font = pygame.font.Font(None, int(self.small_font_size * scale))
+
+    def on_screen_resize(self, screen_width, screen_height):
+        """Handle screen resize events"""
+        self.update_fonts(screen_width, screen_height)
 
     def start_level(self):
         current_level = self.level_manager.get_current_level()
@@ -261,22 +275,28 @@ class PlayMode(GameMode):
         self.start_level()
 
     def draw_score_area(self, screen):
-        pygame.draw.rect(screen, THEME_PRIMARY, (0, 0, WIDTH, SCORE_AREA_HEIGHT))
-        pygame.draw.line(screen, THEME_SECONDARY, (0, SCORE_AREA_HEIGHT), (WIDTH, SCORE_AREA_HEIGHT), 2)
+        screen_width = screen.get_width()
+        screen_height = screen.get_height()
+        scaled_score_height = int(SCORE_AREA_HEIGHT * screen_height/HEIGHT)
+
+        pygame.draw.rect(screen, THEME_PRIMARY, (0, 0, screen_width, scaled_score_height))
+        pygame.draw.line(screen, THEME_SECONDARY, 
+                        (0, scaled_score_height), 
+                        (screen_width, scaled_score_height), 2)
 
         score_text = self.font.render(f"Score: {self.score}", True, THEME_TEXT)
-        score_rect = score_text.get_rect(midleft=(10, SCORE_AREA_HEIGHT // 2))
+        score_rect = score_text.get_rect(midleft=(10, scaled_score_height // 2))
         screen.blit(score_text, score_rect)
 
         level_text = self.font.render(f"Level: {self.level_manager.get_current_level().level_number}", True, THEME_TEXT)
-        level_rect = level_text.get_rect(midright=(WIDTH - 10, SCORE_AREA_HEIGHT // 2))
+        level_rect = level_text.get_rect(midright=(screen_width - 10, scaled_score_height // 2))
         screen.blit(level_text, level_rect)
 
         # Add level title
         current_level = self.level_manager.get_current_level()
         if current_level.title:
             title_text = self.title_font.render(current_level.title, True, THEME_TEXT)
-            title_rect = title_text.get_rect(center=(WIDTH // 2, SCORE_AREA_HEIGHT // 2))
+            title_rect = title_text.get_rect(center=(screen_width // 2, scaled_score_height // 2))
             screen.blit(title_text, title_rect)
 
     def render_maze(self, screen):
@@ -323,6 +343,9 @@ class PlayMode(GameMode):
             diamond.draw(screen, self.game)
 
     def draw_ui(self, screen):
+        screen_width = screen.get_width()
+        screen_height = screen.get_height()
+        
         if self.state == GameState.PLAYING:
             instruction_text = "Press ESC to pause"
         elif self.state == GameState.PAUSED:
@@ -336,7 +359,7 @@ class PlayMode(GameMode):
 
         if instruction_text:
             text = self.font.render(instruction_text, True, WHITE)
-            text_rect = text.get_rect(midbottom=(WIDTH // 2, HEIGHT - 10))
+            text_rect = text.get_rect(midbottom=(screen_width // 2, screen_height - 10))
             screen.blit(text, text_rect)
 
     def collect_coins(self):
@@ -411,57 +434,69 @@ class PlayMode(GameMode):
             self.player.set_direction((0, -1))
 
     def render_pause_overlay(self, screen):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        screen_width = screen.get_width()
+        screen_height = screen.get_height()
+        
+        overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         overlay.fill((*THEME_BACKGROUND[:3], 150))  # Semi-transparent background
         screen.blit(overlay, (0, 0))
         
         pause_text = self.title_font.render("PAUSED", True, THEME_TEXT)
-        pause_rect = pause_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        pause_rect = pause_text.get_rect(center=(screen_width // 2, screen_height // 2))
         screen.blit(pause_text, pause_rect)
 
     def render_game_over_overlay(self, screen):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        screen_width = screen.get_width()
+        screen_height = screen.get_height()
+        
+        overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         overlay.fill((*THEME_BACKGROUND[:3], 150))  # Semi-transparent background
         screen.blit(overlay, (0, 0))
         
         game_over_text = self.title_font.render("GAME OVER", True, THEME_ACCENT)
-        game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        game_over_rect = game_over_text.get_rect(center=(screen_width // 2, screen_height // 2))
         screen.blit(game_over_text, game_over_rect)
 
     def render_level_complete_overlay(self, screen):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        screen_width = screen.get_width()
+        screen_height = screen.get_height()
+        
+        overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         overlay.fill((*THEME_BACKGROUND[:3], 150))  # Semi-transparent background
         screen.blit(overlay, (0, 0))
         
         complete_text = self.title_font.render("LEVEL COMPLETE!", True, THEME_ACCENT)
-        complete_rect = complete_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        complete_rect = complete_text.get_rect(center=(screen_width // 2, screen_height // 2))
         screen.blit(complete_text, complete_rect)
 
         next_level_text = self.font.render("Press N for next level", True, THEME_TEXT)
-        next_rect = next_level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
+        next_rect = next_level_text.get_rect(center=(screen_width // 2, screen_height // 2 + 50))
         screen.blit(next_level_text, next_rect)
 
     def render_level_start_overlay(self, screen):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        screen_width = screen.get_width()
+        screen_height = screen.get_height()
+        
+        overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         overlay.fill((*THEME_BACKGROUND[:3], 150))  # Semi-transparent background
         screen.blit(overlay, (0, 0))
         
         level_text = self.title_font.render(f"Level {self.level_manager.get_current_level().level_number}", True, THEME_TEXT)
-        level_rect = level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60))
+        level_rect = level_text.get_rect(center=(screen_width // 2, screen_height // 2 - 60))
         screen.blit(level_text, level_rect)
 
         if self.level_manager.get_current_level().title:
             title_text = self.font.render(self.level_manager.get_current_level().title, True, THEME_TEXT)
-            title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            title_rect = title_text.get_rect(center=(screen_width // 2, screen_height // 2))
             screen.blit(title_text, title_rect)
 
         # Add countdown display
         countdown_text = self.title_font.render(str(self.remaining_time), True, THEME_ACCENT)
-        countdown_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
+        countdown_rect = countdown_text.get_rect(center=(screen_width // 2, screen_height // 2 + 60))
         screen.blit(countdown_text, countdown_rect)
 
         ready_text = self.font.render("Get ready!", True, THEME_TEXT)
-        ready_rect = ready_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 120))
+        ready_rect = ready_text.get_rect(center=(screen_width // 2, screen_height // 2 + 120))
         screen.blit(ready_text, ready_rect)
 
     def update_camera(self):

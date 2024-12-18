@@ -212,8 +212,20 @@ class Game:
                     pygame.HWSURFACE | pygame.DOUBLEBUF
                 )
             
+            # Get new screen dimensions
             current_width, current_height = self.screen.get_size()
+            
+            # Update fog surface for new dimensions
             self.fog_surface = pygame.Surface((current_width, current_height), pygame.SRCALPHA)
+            
+            # Update viewport dimensions based on new screen size
+            self.viewport_width = current_width / self.zoom
+            self.viewport_height = (current_height - SCORE_AREA_HEIGHT) / self.zoom
+            
+            # Notify current mode of screen resize
+            if hasattr(self.current_mode, 'on_screen_resize'):
+                self.current_mode.on_screen_resize(current_width, current_height)
+            
         except pygame.error:
             print("Failed to toggle fullscreen mode. Reverting to windowed mode.")
             self.is_fullscreen = False
