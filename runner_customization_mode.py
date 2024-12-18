@@ -359,15 +359,19 @@ class RunnerCustomizationMode(GameMode):
         screen.blit(shop_title, title_rect)
         
         self.accessory_rects = []
-        y_offset = 0
+        # Start items lower by adding an initial offset
+        y_offset = self.shop_item_spacing * 2  # Increased from 0 to shop_item_spacing * 2
+        
+        # Calculate left alignment position (align with title's left edge)
+        left_align_x = title_rect.left
         
         for accessory in self.accessories:
             # Draw accessory name and price
             text = f"{accessory['name']} - {accessory['price']} pts"
             text_surface = self.font.render(text, True, THEME_TEXT)
             text_rect = text_surface.get_rect(
-                midleft=(self.shop_pos[0] - self.button_width//2, 
-                        self.shop_pos[1] + y_offset)
+                left=left_align_x,
+                centery=self.shop_pos[1] + y_offset
             )
             screen.blit(text_surface, text_rect)
             
@@ -375,7 +379,8 @@ class RunnerCustomizationMode(GameMode):
             button_text = "Unlock" if not accessory["unlocked"] else "Unlocked"
             button_surface = self.small_font.render(button_text, True, THEME_TEXT)
             button_rect = button_surface.get_rect(
-                midleft=(text_rect.right + 20, text_rect.centery)
+                left=text_rect.right + 20,
+                centery=text_rect.centery
             )
             screen.blit(button_surface, button_rect)
             
