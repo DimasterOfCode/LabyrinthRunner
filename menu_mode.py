@@ -22,8 +22,8 @@ class MenuMode(GameMode):
         self.menu_font_size = 50
         self.small_font_size = 30
         
-        # Initialize fonts (they'll be scaled in render)
-        self.update_fonts(WIDTH, HEIGHT)  # Initial creation
+        # Initialize fonts with default sizes
+        self.update_fonts(game.screen)  # Changed from WIDTH, HEIGHT to screen
         
         # Menu items with descriptions
         self.buttons = [
@@ -67,11 +67,9 @@ class MenuMode(GameMode):
         self.stats_alpha = 0
         self.stats_fade_speed = 5
 
-    def update_fonts(self, screen_width, screen_height):
-        # Calculate scale factor based on screen dimensions
-        scale = min(screen_width/WIDTH, screen_height/HEIGHT)
-        
-        # Create scaled fonts
+    def update_fonts(self, screen):
+        """Update font sizes based on screen dimensions"""
+        scale = self.get_screen_scale(screen)
         self.title_font = pygame.font.Font(None, int(self.title_font_size * scale))
         self.font = pygame.font.Font(None, int(self.menu_font_size * scale))
         self.small_font = pygame.font.Font(None, int(self.small_font_size * scale))
@@ -108,12 +106,12 @@ class MenuMode(GameMode):
                 self.particles.remove(particle)
 
     def render(self, screen, interpolation):
-        # Get current screen dimensions
+        # Update fonts for current screen size
+        self.update_fonts(screen)
+        
         screen_width = screen.get_width()
         screen_height = screen.get_height()
-        
-        # Update fonts for current screen size
-        self.update_fonts(screen_width, screen_height)
+        scale = self.get_screen_scale(screen)
         
         # Draw animated background
         screen.fill(THEME_BACKGROUND)

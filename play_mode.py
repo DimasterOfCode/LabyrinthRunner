@@ -30,22 +30,22 @@ class PlayMode(GameMode):
         self.title_font_size = 48
         self.normal_font_size = 36
         self.small_font_size = 24
-        self.update_fonts(WIDTH, HEIGHT)  # Initial creation
+        self.update_fonts(game.screen)  # Changed from WIDTH, HEIGHT to screen
         self.state = GameState.LEVEL_START
         self.level_start_time = 0
         self.LEVEL_START_DELAY = LEVEL_START_DELAY  # Use constant instead of magic number
         self.remaining_time = 0
 
-    def update_fonts(self, screen_width, screen_height):
+    def update_fonts(self, screen):
         """Update font sizes based on screen dimensions"""
-        scale = min(screen_width/WIDTH, screen_height/HEIGHT)
+        scale = self.get_screen_scale(screen)
         self.title_font = pygame.font.Font(None, int(self.title_font_size * scale))
         self.font = pygame.font.Font(None, int(self.normal_font_size * scale))
         self.small_font = pygame.font.Font(None, int(self.small_font_size * scale))
 
     def on_screen_resize(self, screen_width, screen_height):
         """Handle screen resize events"""
-        self.update_fonts(screen_width, screen_height)
+        self.update_fonts(self.game.screen)
 
     def start_level(self):
         current_level = self.level_manager.get_current_level()
