@@ -60,7 +60,7 @@ class Game:
         # Camera/viewport settings
         self.camera_x = 0
         self.camera_y = 0
-        self.zoom = 2.0  # Fixed 2x zoom
+        self.zoom = 4.0  # Increased from 2.0 to 4.0 for 2x more zoom
         
         # Calculate the visible area (adjusted for zoom)
         self.viewport_width = WIDTH / self.zoom
