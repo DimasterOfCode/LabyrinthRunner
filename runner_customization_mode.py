@@ -94,22 +94,25 @@ class RunnerCustomizationMode(GameMode):
         
         # Calculate preview character dimensions
         self.preview_radius = int(60 * self.scale)
-        self.preview_pos = (screen_width * 0.35, screen_height * 0.35)
+        
+        # Separate positions for preview and buttons
+        self.buttons_center_x = screen_width * 0.35  # Buttons stay centered at 0.35
+        self.preview_pos = (screen_width * 0.45, screen_height * 0.35)  # Preview moved to 0.45
         
         # Calculate vertical spacing
         section_spacing = screen_height * 0.08
         
-        # Update button positions relative to preview character
+        # Update button positions relative to buttons_center_x (not preview_pos)
         button_y = self.preview_pos[1] + self.preview_radius + section_spacing
         
         # Face selection buttons
         self.happy_button = pygame.Rect(
-            self.preview_pos[0] - self.button_width - self.button_spacing//2,
+            self.buttons_center_x - self.button_width - self.button_spacing//2,
             button_y,
             self.button_width, self.button_height
         )
         self.sad_button = pygame.Rect(
-            self.preview_pos[0] + self.button_spacing//2,
+            self.buttons_center_x + self.button_spacing//2,
             button_y,
             self.button_width, self.button_height
         )
@@ -117,12 +120,12 @@ class RunnerCustomizationMode(GameMode):
         # Color selection buttons
         button_y += self.button_height + section_spacing
         self.prev_color_button = pygame.Rect(
-            self.preview_pos[0] - self.button_width - self.button_spacing//2,
+            self.buttons_center_x - self.button_width - self.button_spacing//2,
             button_y,
             self.button_width, self.button_height
         )
         self.next_color_button = pygame.Rect(
-            self.preview_pos[0] + self.button_spacing//2,
+            self.buttons_center_x + self.button_spacing//2,
             button_y,
             self.button_width, self.button_height
         )
@@ -130,12 +133,12 @@ class RunnerCustomizationMode(GameMode):
         # Trail buttons
         button_y += self.button_height + section_spacing
         self.prev_trail_button = pygame.Rect(
-            self.preview_pos[0] - self.button_width - self.button_spacing//2,
+            self.buttons_center_x - self.button_width - self.button_spacing//2,
             button_y,
             self.button_width, self.button_height
         )
         self.next_trail_button = pygame.Rect(
-            self.preview_pos[0] + self.button_spacing//2,
+            self.buttons_center_x + self.button_spacing//2,
             button_y,
             self.button_width, self.button_height
         )
@@ -143,12 +146,12 @@ class RunnerCustomizationMode(GameMode):
         # Hat selection buttons
         button_y += self.button_height + section_spacing
         self.prev_hat_button = pygame.Rect(
-            self.preview_pos[0] - self.button_width - self.button_spacing//2,
+            self.buttons_center_x - self.button_width - self.button_spacing//2,
             button_y,
             self.button_width, self.button_height
         )
         self.next_hat_button = pygame.Rect(
-            self.preview_pos[0] + self.button_spacing//2,
+            self.buttons_center_x + self.button_spacing//2,
             button_y,
             self.button_width, self.button_height
         )
@@ -277,7 +280,7 @@ class RunnerCustomizationMode(GameMode):
     def draw_trail_particles(self, screen):
         particle_spacing = int(25 * self.scale)
         base_particle_size = int(18 * self.scale)
-        start_x = self.preview_pos[0] - particle_spacing * 3
+        start_x = self.preview_pos[0] - particle_spacing * 10
         
         for i in range(3):
             particle_size = base_particle_size - (i * 2.0)
