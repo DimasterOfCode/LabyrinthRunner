@@ -17,10 +17,12 @@ from enum import Enum, auto
 class RunnerCustomizationMode(GameMode):
     def __init__(self, game):
         super().__init__(game)
-        self.font = pygame.font.Font(None, 36)
-        self.large_font = pygame.font.Font(None, 32)
-        self.small_font = pygame.font.Font(None, 24)
-        
+        self.game = game
+        self.setup_initial_state()
+        self.update_layout(game.screen.get_width(), game.screen.get_height())
+
+    def setup_initial_state(self):
+        """Initialize non-layout related state"""
         # Accessories and prices
         self.accessories = [
             {"name": "Top Hat", "price": 100, "unlocked": False},
@@ -29,21 +31,19 @@ class RunnerCustomizationMode(GameMode):
         ]
 
         # Player score
-        self.player_score = 10000  # Example score
+        self.player_score = 10000
 
         # Animation
         self.animation_offset = 0
 
         # Face customization
         self.current_face = "happy"
-        self.faces = {
-            "happy": "☺",
-            "sad": "☹"
-        }
+        self.faces = {"happy": "☺", "sad": "☹"}
         
         # Hat customization
         self.hats = ["none", "top_hat", "crown"]
         self.current_hat = "none"
+        self.hat_index = 0
         
         # Color customization
         self.colors = [
@@ -76,42 +76,86 @@ class RunnerCustomizationMode(GameMode):
             (240, 230, 140)   # Khaki
         ]
         self.trail_color_index = 0
+
+    def update_layout(self, screen_width, screen_height):
+        """Update all UI elements based on screen dimensions"""
+        # Calculate base scale factor based on screen dimensions
+        self.scale = min(screen_width / 1280, screen_height / 720)  # Base resolution
         
-        # Button dimensions
-        self.button_width = 80
-        self.button_height = 40
-        self.button_spacing = 20
+        # Update fonts
+        self.font = pygame.font.Font(None, int(36 * self.scale))
+        self.large_font = pygame.font.Font(None, int(48 * self.scale))
+        self.small_font = pygame.font.Font(None, int(24 * self.scale))
+        
+        # Calculate relative dimensions
+        self.button_width = int(120 * self.scale)
+        self.button_height = int(40 * self.scale)
+        self.button_spacing = int(20 * self.scale)
+        
+        # Calculate preview character dimensions
+        self.preview_radius = int(60 * self.scale)
+        self.preview_pos = (screen_width * 0.35, screen_height * 0.35)
+        
+        # Calculate vertical spacing
+        section_spacing = screen_height * 0.08
+        
+        # Update button positions relative to preview character
+        button_y = self.preview_pos[1] + self.preview_radius + section_spacing
         
         # Face selection buttons
-        self.happy_button = pygame.Rect(WIDTH//2 - self.button_width - self.button_spacing//2, 
-                                      HEIGHT//2, self.button_width, self.button_height)
-        self.sad_button = pygame.Rect(WIDTH//2 + self.button_spacing//2, 
-                                    HEIGHT//2, self.button_width, self.button_height)
+        self.happy_button = pygame.Rect(
+            self.preview_pos[0] - self.button_width - self.button_spacing//2,
+            button_y,
+            self.button_width, self.button_height
+        )
+        self.sad_button = pygame.Rect(
+            self.preview_pos[0] + self.button_spacing//2,
+            button_y,
+            self.button_width, self.button_height
+        )
         
         # Color selection buttons
-        self.prev_color_button = pygame.Rect(WIDTH//2 - self.button_width - self.button_spacing//2, 
-                                           HEIGHT//2 + self.button_height + self.button_spacing, 
-                                           self.button_width, self.button_height)
-        self.next_color_button = pygame.Rect(WIDTH//2 + self.button_spacing//2, 
-                                           HEIGHT//2 + self.button_height + self.button_spacing, 
-                                           self.button_width, self.button_height)
+        button_y += self.button_height + section_spacing
+        self.prev_color_button = pygame.Rect(
+            self.preview_pos[0] - self.button_width - self.button_spacing//2,
+            button_y,
+            self.button_width, self.button_height
+        )
+        self.next_color_button = pygame.Rect(
+            self.preview_pos[0] + self.button_spacing//2,
+            button_y,
+            self.button_width, self.button_height
+        )
         
-        # Trail color selection buttons
-        self.prev_trail_button = pygame.Rect(WIDTH//2 - self.button_width - self.button_spacing//2, 
-                                           HEIGHT//2 + (self.button_height + self.button_spacing) * 2, 
-                                           self.button_width, self.button_height)
-        self.next_trail_button = pygame.Rect(WIDTH//2 + self.button_spacing//2, 
-                                           HEIGHT//2 + (self.button_height + self.button_spacing) * 2, 
-                                           self.button_width, self.button_height)
+        # Trail buttons
+        button_y += self.button_height + section_spacing
+        self.prev_trail_button = pygame.Rect(
+            self.preview_pos[0] - self.button_width - self.button_spacing//2,
+            button_y,
+            self.button_width, self.button_height
+        )
+        self.next_trail_button = pygame.Rect(
+            self.preview_pos[0] + self.button_spacing//2,
+            button_y,
+            self.button_width, self.button_height
+        )
         
-        # Add hat selection buttons
-        self.prev_hat_button = pygame.Rect(WIDTH//2 - self.button_width - self.button_spacing//2,
-                                         HEIGHT//2 + (self.button_height + self.button_spacing) * 3,
-                                         self.button_width, self.button_height)
-        self.next_hat_button = pygame.Rect(WIDTH//2 + self.button_spacing//2,
-                                         HEIGHT//2 + (self.button_height + self.button_spacing) * 3,
-                                         self.button_width, self.button_height)
-        self.hat_index = 0
+        # Hat selection buttons
+        button_y += self.button_height + section_spacing
+        self.prev_hat_button = pygame.Rect(
+            self.preview_pos[0] - self.button_width - self.button_spacing//2,
+            button_y,
+            self.button_width, self.button_height
+        )
+        self.next_hat_button = pygame.Rect(
+            self.preview_pos[0] + self.button_spacing//2,
+            button_y,
+            self.button_width, self.button_height
+        )
+        
+        # Shop section
+        self.shop_pos = (screen_width * 0.75, screen_height * 0.35)
+        self.shop_item_spacing = int(50 * self.scale)
 
     def calculate_points(self):
         return self.player_score // 100  # Convert score to points
@@ -194,43 +238,55 @@ class RunnerCustomizationMode(GameMode):
 
         # Create a moving gradient background
         for y in range(screen_height):
-            color = self.lerp_color((20, 20, 40), (50, 50, 80), (y + self.animation_offset * 50) % screen_height / screen_height)
+            color = self.lerp_color(
+                (20, 20, 40), 
+                (50, 50, 80), 
+                (y + self.animation_offset * 50) % screen_height / screen_height
+            )
             pygame.draw.line(screen, color, (0, y), (screen_width, y))
 
-        screen.fill(THEME_BACKGROUND)
-        
         # Draw title
-        title = self.font.render("Customize Your Runner", True, THEME_TEXT)
-        title_rect = title.get_rect(midtop=(WIDTH//2, 50))
+        title = self.large_font.render("Customize Your Runner", True, THEME_TEXT)
+        title_rect = title.get_rect(midtop=(screen_width * 0.5, screen_height * 0.05))
         screen.blit(title, title_rect)
         
-        # Display player points in the top right corner
+        # Display player points
         points_text = self.small_font.render(f"{self.calculate_points()} points", True, THEME_TEXT)
-        points_rect = points_text.get_rect(topright=(screen_width - 20, 20))
+        points_rect = points_text.get_rect(topright=(screen_width * 0.95, screen_height * 0.05))
         screen.blit(points_text, points_rect)
         
-        # Draw current character preview (larger circle with face)
-        preview_pos = (WIDTH//2, HEIGHT//2 - 100)
-        preview_radius = 60
+        # Draw trail particles
+        self.draw_trail_particles(screen)
         
-        # Draw trail particles BEFORE the character, now even higher
-        particle_spacing = 20
-        base_particle_size = 18
-        particle_size = base_particle_size
-        start_x = preview_pos[0] - 280
-        particle_y = preview_pos[1] + 5
+        # Draw character preview
+        pygame.draw.circle(screen, self.colors[self.color_index], self.preview_pos, self.preview_radius)
+        self.draw_hat(screen, self.preview_pos, self.preview_radius)
+        self.draw_face(screen)
         
-        # Draw 3 trail particles
+        # Draw all buttons
+        self.draw_buttons(screen)
+        
+        # Draw accessories shop
+        self.draw_accessories_shop(screen)
+        
+        # Draw back button
+        back_text = self.font.render("Back to Menu", True, THEME_TEXT)
+        back_rect = back_text.get_rect(midbottom=(screen_width * 0.5, screen_height * 0.95))
+        screen.blit(back_text, back_rect)
+
+    def draw_trail_particles(self, screen):
+        particle_spacing = int(25 * self.scale)
+        base_particle_size = int(18 * self.scale)
+        start_x = self.preview_pos[0] - particle_spacing * 3
+        
         for i in range(3):
             particle_size = base_particle_size - (i * 2.0)
             opacity = 200 - (i * 50)
-            
             particle_color = list(self.trail_colors[self.trail_color_index])
             particle_color.append(opacity)
             
             particle_surface = pygame.Surface((particle_size * 2, particle_size * 2), pygame.SRCALPHA)
             
-            # Draw the particle with a softer edge effect
             for radius in range(int(particle_size), 0, -1):
                 current_opacity = int(opacity * (radius / particle_size) * 0.8)
                 current_color = list(self.trail_colors[self.trail_color_index])
@@ -238,133 +294,90 @@ class RunnerCustomizationMode(GameMode):
                 pygame.draw.circle(particle_surface, current_color, 
                                  (particle_size, particle_size), radius)
             
-            # Draw particles from right to left (newest to oldest)
             x_pos = start_x + ((2 - i) * (particle_spacing + particle_size))
             screen.blit(particle_surface, 
-                       (x_pos, particle_y))
+                       (x_pos, self.preview_pos[1] + 5))
+
+    def draw_face(self, screen):
+        eye_radius = max(3, self.preview_radius // 5)
+        eye_offset = self.preview_radius // 3
         
-        # Draw the character
-        pygame.draw.circle(screen, self.colors[self.color_index], preview_pos, preview_radius)
+        # Draw eyes
+        pygame.draw.circle(screen, BLACK, 
+                          (int(self.preview_pos[0] - eye_offset), 
+                           int(self.preview_pos[1] - eye_offset)), eye_radius)
+        pygame.draw.circle(screen, BLACK, 
+                          (int(self.preview_pos[0] + eye_offset), 
+                           int(self.preview_pos[1] - eye_offset)), eye_radius)
         
-        # Draw the hat on the preview character
-        self.draw_hat(screen, preview_pos, preview_radius)
-        
-        # Draw eyes and mouth for preview
-        eye_radius = max(3, preview_radius // 5)
-        eye_offset = preview_radius // 3
-        pygame.draw.circle(screen, BLACK, (int(preview_pos[0] - eye_offset), int(preview_pos[1] - eye_offset)), eye_radius)
-        pygame.draw.circle(screen, BLACK, (int(preview_pos[0] + eye_offset), int(preview_pos[1] - eye_offset)), eye_radius)
-        
+        # Draw mouth
         if self.current_face == "happy":
-            smile_rect = (int(preview_pos[0] - preview_radius//2), int(preview_pos[1]), preview_radius, preview_radius//2)
-            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(2, preview_radius//5))
+            smile_rect = (int(self.preview_pos[0] - self.preview_radius//2), 
+                         int(self.preview_pos[1]), 
+                         self.preview_radius, 
+                         self.preview_radius//2)
+            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, 
+                           max(2, self.preview_radius//5))
         else:
-            frown_rect = (int(preview_pos[0] - preview_radius//2), int(preview_pos[1] + preview_radius//4), preview_radius, preview_radius//2)
-            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(2, preview_radius//5))
+            frown_rect = (int(self.preview_pos[0] - self.preview_radius//2), 
+                         int(self.preview_pos[1] + self.preview_radius//4), 
+                         self.preview_radius, 
+                         self.preview_radius//2)
+            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, 
+                           max(2, self.preview_radius//5))
 
-        # Draw face selection buttons first
-        happy_button_y = preview_pos[1] + preview_radius + 30
-        self.happy_button = pygame.Rect(WIDTH//2 - self.button_width - self.button_spacing//2,
-                                      happy_button_y,
-                                      self.button_width, self.button_height)
-        self.sad_button = pygame.Rect(WIDTH//2 + self.button_spacing//2,
-                                    happy_button_y,
-                                    self.button_width, self.button_height)
-        
-        pygame.draw.rect(screen, THEME_PRIMARY, self.happy_button)
-        pygame.draw.rect(screen, THEME_PRIMARY, self.sad_button)
-        
-        happy_text = self.font.render("Happy", True, THEME_TEXT)
-        sad_text = self.font.render("Sad", True, THEME_TEXT)
-        screen.blit(happy_text, happy_text.get_rect(center=self.happy_button.center))
-        screen.blit(sad_text, sad_text.get_rect(center=self.sad_button.center))
-
-        # Draw color selection buttons second
-        color_button_y = happy_button_y + self.button_height + self.button_spacing
-        self.prev_color_button = pygame.Rect(WIDTH//2 - self.button_width - self.button_spacing,
-                                           color_button_y,
-                                           self.button_width, self.button_height)
-        self.next_color_button = pygame.Rect(WIDTH//2 + self.button_spacing,
-                                           color_button_y,
-                                           self.button_width, self.button_height)
-        
-        pygame.draw.rect(screen, THEME_PRIMARY, self.prev_color_button)
-        pygame.draw.rect(screen, THEME_PRIMARY, self.next_color_button)
-        
-        prev_text = self.font.render("< Color", True, THEME_TEXT)
-        next_text = self.font.render("Color >", True, THEME_TEXT)
-        screen.blit(prev_text, prev_text.get_rect(center=self.prev_color_button.center))
-        screen.blit(next_text, next_text.get_rect(center=self.next_color_button.center))
-        
-        # Draw current color name
-        color_text = self.font.render("Current Color", True, self.colors[self.color_index])
-        color_rect = color_text.get_rect(midtop=(WIDTH//2, color_button_y + self.button_height + 10))
-        screen.blit(color_text, color_rect)
-
-        # Update trail color selection buttons to be aligned with particles
-        particles_center_x = start_x + ((particle_spacing + base_particle_size) * 1.5)
-        trail_button_y = preview_pos[1] + 90
-        
-        self.prev_trail_button = pygame.Rect(particles_center_x - self.button_width - self.button_spacing,
-                                           trail_button_y,
-                                           self.button_width, self.button_height)
-        self.next_trail_button = pygame.Rect(particles_center_x + self.button_spacing,
-                                           trail_button_y,
-                                           self.button_width, self.button_height)
-        
-        pygame.draw.rect(screen, THEME_PRIMARY, self.prev_trail_button)
-        pygame.draw.rect(screen, THEME_PRIMARY, self.next_trail_button)
-        
-        prev_trail_text = self.font.render("< Trail", True, THEME_TEXT)
-        next_trail_text = self.font.render("Trail >", True, THEME_TEXT)
-        screen.blit(prev_trail_text, prev_trail_text.get_rect(center=self.prev_trail_button.center))
-        screen.blit(next_trail_text, next_trail_text.get_rect(center=self.next_trail_button.center))
-        
-        # Draw trail color name below the particles
-        trail_color_text = self.font.render("Trail Color", True, self.trail_colors[self.trail_color_index])
-        trail_color_rect = trail_color_text.get_rect(midtop=(particles_center_x, trail_button_y + self.button_height + 10))
-        screen.blit(trail_color_text, trail_color_rect)
-
-        # Draw hat selection buttons
-        pygame.draw.rect(screen, THEME_PRIMARY, self.prev_hat_button)
-        pygame.draw.rect(screen, THEME_PRIMARY, self.next_hat_button)
-        
-        prev_hat_text = self.font.render("< Hat", True, THEME_TEXT)
-        next_hat_text = self.font.render("Hat >", True, THEME_TEXT)
-        screen.blit(prev_hat_text, prev_hat_text.get_rect(center=self.prev_hat_button.center))
-        screen.blit(next_hat_text, next_hat_text.get_rect(center=self.next_hat_button.center))
-        
-        # Draw current hat name
-        hat_text = self.font.render(f"Hat: {self.current_hat.replace('_', ' ').title()}", True, THEME_TEXT)
-        hat_rect = hat_text.get_rect(midtop=(WIDTH//2, self.prev_hat_button.bottom + 10))
-        screen.blit(hat_text, hat_rect)
-
-        # Draw accessories shop
-        self.draw_accessories_shop(screen, preview_pos)
-
-        # Draw back button
-        back_text = self.font.render("Back to Menu", True, THEME_TEXT)
-        back_rect = back_text.get_rect(midbottom=(WIDTH//2, HEIGHT - 20))
-        screen.blit(back_text, back_rect)
-
-    def draw_accessories_shop(self, screen, preview_pos):
-        x_offset = 120
-        y_offset = 50
-        self.accessory_rects = []  # Store rects for click detection
-        for accessory in self.accessories:
-            accessory_text = f"{accessory['name']} - {accessory['price']} pts"
-            text_surface = self.large_font.render(accessory_text, True, THEME_TEXT)
-            text_rect = text_surface.get_rect(midleft=(preview_pos[0] + x_offset, preview_pos[1] + y_offset))
+    def draw_buttons(self, screen):
+        # Helper function to draw a button with text
+        def draw_button(rect, text):
+            pygame.draw.rect(screen, THEME_PRIMARY, rect)
+            text_surface = self.font.render(text, True, THEME_TEXT)
+            text_rect = text_surface.get_rect(center=rect.center)
             screen.blit(text_surface, text_rect)
+        
+        # Draw all buttons
+        button_pairs = [
+            (self.happy_button, "Happy"),
+            (self.sad_button, "Sad"),
+            (self.prev_color_button, "< Color"),
+            (self.next_color_button, "Color >"),
+            (self.prev_trail_button, "< Trail"),
+            (self.next_trail_button, "Trail >"),
+            (self.prev_hat_button, "< Hat"),
+            (self.next_hat_button, "Hat >")
+        ]
+        
+        for rect, text in button_pairs:
+            draw_button(rect, text)
 
-            # Create button
+    def draw_accessories_shop(self, screen):
+        # Draw shop title
+        shop_title = self.large_font.render("Accessories Shop", True, THEME_TEXT)
+        title_rect = shop_title.get_rect(midtop=(self.shop_pos[0], self.shop_pos[1] - self.shop_item_spacing))
+        screen.blit(shop_title, title_rect)
+        
+        self.accessory_rects = []
+        y_offset = 0
+        
+        for accessory in self.accessories:
+            # Draw accessory name and price
+            text = f"{accessory['name']} - {accessory['price']} pts"
+            text_surface = self.font.render(text, True, THEME_TEXT)
+            text_rect = text_surface.get_rect(
+                midleft=(self.shop_pos[0] - self.button_width//2, 
+                        self.shop_pos[1] + y_offset)
+            )
+            screen.blit(text_surface, text_rect)
+            
+            # Draw unlock/unlocked button
             button_text = "Unlock" if not accessory["unlocked"] else "Unlocked"
             button_surface = self.small_font.render(button_text, True, THEME_TEXT)
-            button_rect = button_surface.get_rect(midleft=(text_rect.right + 10, text_rect.centery))
+            button_rect = button_surface.get_rect(
+                midleft=(text_rect.right + 20, text_rect.centery)
+            )
             screen.blit(button_surface, button_rect)
-
-            self.accessory_rects.append((button_rect, accessory))  # Store rect and accessory
-            y_offset += 50
+            
+            self.accessory_rects.append((button_rect, accessory))
+            y_offset += self.shop_item_spacing
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -430,3 +443,7 @@ class RunnerCustomizationMode(GameMode):
     @staticmethod
     def lerp_color(color1, color2, t):
         return tuple(int(a + (b - a) * t) for a, b in zip(color1, color2))
+
+    def on_screen_resize(self, screen_width, screen_height):
+        """Handle screen resize events"""
+        self.update_layout(screen_width, screen_height)
