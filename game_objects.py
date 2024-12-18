@@ -58,7 +58,7 @@ class Particle:
         self.color = list(color)  # Convert to list for alpha modification
         self.color.append(255)    # Add alpha channel
         self.birth_time = time.time()
-        self.size = PARTICLE_SIZE
+        self.base_size = PARTICLE_SIZE  # Store base size
 
     def update(self):
         age = time.time() - self.birth_time
@@ -71,11 +71,25 @@ class Particle:
 
     def draw(self, screen, game):
         if self.color[3] > 0:  # Only draw if not completely transparent
-            surface = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
-            pygame.draw.circle(surface, self.color, (self.size, self.size), self.size)
+            # Scale particle size with zoom
+            scaled_size = self.base_size * game.zoom
+            
+            # Create surface with scaled dimensions
+            surface = pygame.Surface((scaled_size * 2, scaled_size * 2), pygame.SRCALPHA)
+            
+            # Draw scaled particle
+            pygame.draw.circle(surface, self.color, 
+                             (scaled_size, scaled_size), 
+                             scaled_size)
+            
+            # Convert world coordinates to screen coordinates
             screen_x = (self.x - game.camera_x) * game.zoom
             screen_y = (self.y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
-            screen.blit(surface, (int(screen_x - self.size), int(screen_y - self.size)))
+            
+            # Position the particle considering its scaled size
+            screen.blit(surface, 
+                       (int(screen_x - scaled_size), 
+                        int(screen_y - scaled_size)))
 
 class Player(MovableObject):
     SYMBOL = 'S'
