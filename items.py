@@ -2,19 +2,25 @@ import pygame
 import math
 from constants import *
 
-# Hat Items
-class NoHat:
-    def __init__(self):
-        self.id = "none"
-        self.name = "No Hat"
+class SlotItem:
+    """Base class for all customization items"""
+    def __init__(self, id: str, name: str):
+        self.id = id
+        self.name = name
     
     def draw(self, screen, pos, radius, scale=1.0, color=None):
-        pass  # Nothing to draw
+        """Default draw method - override in subclasses"""
+        pass
 
-class TopHat:
+class NoItem(SlotItem):
+    """Generic empty slot item"""
+    def __init__(self, name="None"):
+        super().__init__("none", name)
+
+# Hat Items
+class TopHat(SlotItem):
     def __init__(self):
-        self.id = "top_hat"
-        self.name = "Top Hat"
+        super().__init__("top_hat", "Top Hat")
     
     def draw(self, screen, pos, radius, scale=1.0, color=None):
         screen_x, screen_y = pos
@@ -37,12 +43,11 @@ class TopHat:
              int(hat_width), int(hat_height)))
 
 # Face Items
-class HappyFace:
+class HappyFace(SlotItem):
     def __init__(self):
-        self.id = "happy"
-        self.name = "Happy Face"
+        super().__init__("happy", "Happy Face")
     
-    def draw(self, screen, pos, radius, scale=1.0):
+    def draw(self, screen, pos, radius, scale=1.0, color=None):
         screen_x, screen_y = pos
         scaled_radius = int(radius * scale)
         
@@ -64,12 +69,11 @@ class HappyFace:
         pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, 
             max(1, scaled_radius//5))
 
-class SadFace:
+class SadFace(SlotItem):
     def __init__(self):
-        self.id = "sad"
-        self.name = "Sad Face"
+        super().__init__("sad", "Sad Face")
     
-    def draw(self, screen, pos, radius, scale=1.0):
+    def draw(self, screen, pos, radius, scale=1.0, color=None):
         screen_x, screen_y = pos
         scaled_radius = int(radius * scale)
         
@@ -92,18 +96,9 @@ class SadFace:
             max(1, scaled_radius//5))
 
 # Trail Items
-class NoTrail:
+class CircleTrail(SlotItem):
     def __init__(self):
-        self.id = "none"
-        self.name = "No Trail"
-    
-    def draw(self, screen, pos, radius, scale=1.0, color=None):
-        pass  # Nothing to draw
-
-class CircleTrail:
-    def __init__(self):
-        self.id = "circles"
-        self.name = "Circle Trail"
+        super().__init__("circles", "Circle Trail")
     
     def draw(self, screen, pos, radius, scale=1.0, color=None):
         screen_x, screen_y = pos
@@ -132,7 +127,7 @@ class CircleTrail:
 # Create instances of all items
 ITEMS = {
     "hat": {
-        "none": NoHat(),
+        "none": NoItem("No Hat"),
         "top_hat": TopHat()
     },
     "face": {
@@ -140,7 +135,7 @@ ITEMS = {
         "sad": SadFace()
     },
     "trail": {
-        "none": NoTrail(),
+        "none": NoItem("No Trail"),
         "circles": CircleTrail()
     }
 } 

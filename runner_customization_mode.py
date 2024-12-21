@@ -42,12 +42,12 @@ class RunnerCustomizationMode(GameMode):
         # Define available items for each slot
         self.slots = {
             "hat": CustomizationSlot("Hat", [
-                {"id": "none", "name": "No Hat"},
-                {"id": "top_hat", "name": "Top Hat"}
+                ITEMS["hat"]["none"],
+                ITEMS["hat"]["top_hat"]
             ]),
             "body": CustomizationSlot("Body", [
-                {"id": "happy", "name": "Happy Face"},
-                {"id": "sad", "name": "Sad Face"}
+                ITEMS["face"]["happy"],
+                ITEMS["face"]["sad"]
             ]),
             "body_color": CustomizationSlot("Body Color", [
                 {"id": "red", "name": "Red", "color": (255, 0, 0)},
@@ -57,8 +57,8 @@ class RunnerCustomizationMode(GameMode):
                 {"id": "blue", "name": "Blue", "color": (0, 0, 255)}
             ]),
             "trail": CustomizationSlot("Trail", [
-                {"id": "none", "name": "No Trail"},
-                {"id": "circles", "name": "Circles"}
+                ITEMS["trail"]["none"],
+                ITEMS["trail"]["circles"]
             ]),
             "trail_color": CustomizationSlot("Trail Color", [
                 {"id": "teal", "name": "Teal", "color": (0, 128, 128)},
@@ -147,9 +147,12 @@ class RunnerCustomizationMode(GameMode):
         for slot_name, buttons in self.slot_buttons.items():
             slot = self.slots[slot_name]
             current_item = slot.current_item
-
+            
+            # Get name from either SlotItem instance or dictionary
+            item_name = current_item.name if hasattr(current_item, 'name') else current_item["name"]
+            
             # Draw slot label
-            label = self.font.render(f"{slot.name}: {current_item['name']}", True, THEME_TEXT)
+            label = self.font.render(f"{slot.name}: {item_name}", True, THEME_TEXT)
             screen.blit(label, buttons["label_pos"])
 
             # Draw navigation buttons
@@ -167,12 +170,20 @@ class RunnerCustomizationMode(GameMode):
 
     def draw_preview(self, screen):
         # Get current customization values
-        body_color = self.slots["body_color"].current_item["color"]
-        face_type = self.slots["body"].current_item["id"]
-        hat_type = self.slots["hat"].current_item["id"]
+        body_color = self.slots["body_color"].current_item["color"]  # Still a dictionary
+        
+        # Handle SlotItem instances
+        face_item = self.slots["body"].current_item
+        face_type = face_item.id if hasattr(face_item, 'id') else face_item["id"]
+        
+        hat_item = self.slots["hat"].current_item
+        hat_type = hat_item.id if hasattr(hat_item, 'id') else hat_item["id"]
+        
+        trail_item = self.slots["trail"].current_item
+        trail_type = trail_item.id if hasattr(trail_item, 'id') else trail_item["id"]
 
         # Draw trail if enabled
-        if self.slots["trail"].current_item["id"] == "circles":
+        if trail_type == "circles":
             self.draw_trail(screen)
 
         # Use shared renderer
@@ -224,7 +235,8 @@ class RunnerCustomizationMode(GameMode):
 
     def get_player_face(self):
         """Get the currently selected face type"""
-        return self.slots["body"].current_item["id"]
+        item = self.slots["body"].current_item
+        return item.id if hasattr(item, 'id') else item["id"]
 
     def get_trail_color(self):
         """Get the currently selected trail color"""
@@ -232,8 +244,10 @@ class RunnerCustomizationMode(GameMode):
 
     def get_player_hat(self):
         """Get the currently selected hat type"""
-        return self.slots["hat"].current_item["id"]
+        item = self.slots["hat"].current_item
+        return item.id if hasattr(item, 'id') else item["id"]
 
     def get_trail_type(self):
         """Get the currently selected trail type"""
-        return self.slots["trail"].current_item["id"]
+        item = self.slots["trail"].current_item
+        return item.id if hasattr(item, 'id') else item["id"]
