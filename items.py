@@ -12,6 +12,10 @@ class SlotItem:
         """Default draw method - override in subclasses"""
         pass
 
+    def draw_preview(self, screen, pos, radius, scale=1.0, color=None):
+        """Default preview method - can be overridden for custom preview rendering"""
+        self.draw(screen, pos, radius, scale, color)
+
 class NoItem(SlotItem):
     """Generic empty slot item"""
     def __init__(self, name="None"):
@@ -207,18 +211,12 @@ class CircleTrail(SlotItem):
     def __init__(self):
         super().__init__("circles", "Circle Trail")
     
-    def draw(self, screen, pos, radius, scale=1.0, color=None):
+    def draw_preview(self, screen, pos, radius, scale=1.0, color=None):
+        """Special preview rendering for shop tiles"""
         screen_x, screen_y = pos
-        particle_spacing = int(25 * scale)
+        particle_spacing = int(15 * scale)
         base_particle_size = int(18 * scale)
-        
-        # For shop preview, adjust the starting position
-        surface_width = getattr(screen, 'get_width', lambda: None)()
-        if surface_width and surface_width < 200:  # If it's a small surface (shop tile)
-            start_x = screen_x  # Start from the mock player position
-            particle_spacing = int(15 * scale)  # Smaller spacing for shop preview
-        else:
-            start_x = screen_x - particle_spacing * 10
+        start_x = screen_x
         
         for i in range(3):
             particle_size = base_particle_size - (i * 2.0)
@@ -235,42 +233,65 @@ class CircleTrail(SlotItem):
                 pygame.draw.circle(particle_surface, current_color, 
                                  (particle_size, particle_size), r)
             
-            # Adjust x position based on context
-            if surface_width and surface_width < 200:
-                x_pos = start_x - (i * particle_spacing)  # Draw to the left for shop preview
-            else:
-                x_pos = start_x + ((2 - i) * (particle_spacing + particle_size))
-                
+            x_pos = start_x - (i * particle_spacing)
+            screen.blit(particle_surface, (x_pos, screen_y + 5))
+
+    def draw(self, screen, pos, radius, scale=1.0, color=None):
+        """Normal in-game rendering"""
+        screen_x, screen_y = pos
+        particle_spacing = int(25 * scale)
+        base_particle_size = int(18 * scale)
+        start_x = screen_x - particle_spacing * 10
+        
+        for i in range(3):
+            particle_size = base_particle_size - (i * 2.0)
+            opacity = 200 - (i * 50)
+            particle_color = list(color or (135, 206, 235))
+            particle_color.append(opacity)
+            
+            particle_surface = pygame.Surface((particle_size * 2, particle_size * 2), pygame.SRCALPHA)
+            
+            for r in range(int(particle_size), 0, -1):
+                current_opacity = int(opacity * (r / particle_size) * 0.8)
+                current_color = list(color or (135, 206, 235))
+                current_color.append(current_opacity)
+                pygame.draw.circle(particle_surface, current_color, 
+                                 (particle_size, particle_size), r)
+            
+            x_pos = start_x + ((2 - i) * (particle_spacing + particle_size))
             screen.blit(particle_surface, (x_pos, screen_y + 5))
 
 class StarTrail(SlotItem):
     def __init__(self):
         super().__init__("stars", "Star Trail")
     
-    def draw(self, screen, pos, radius, scale=1.0, color=None):
+    def draw_preview(self, screen, pos, radius, scale=1.0, color=None):
+        """Special preview rendering for shop tiles"""
         screen_x, screen_y = pos
-        particle_spacing = int(30 * scale)
+        particle_spacing = int(15 * scale)
         star_size = int(15 * scale)
-        
-        # For shop preview, adjust the starting position
-        surface_width = getattr(screen, 'get_width', lambda: None)()
-        if surface_width and surface_width < 200:  # If it's a small surface (shop tile)
-            start_x = screen_x  # Start from the mock player position
-            particle_spacing = int(15 * scale)  # Smaller spacing for shop preview
-        else:
-            start_x = screen_x - particle_spacing * 10
+        start_x = screen_x
         
         for i in range(3):
             opacity = 200 - (i * 50)
             star_color = list(color or (255, 215, 0))  # Gold default
             star_color.append(opacity)
             
-            # Adjust x position based on context
-            if surface_width and surface_width < 200:
-                x_pos = start_x - (i * particle_spacing)  # Draw to the left for shop preview
-            else:
-                x_pos = start_x + ((2 - i) * particle_spacing)
-            
+            x_pos = start_x - (i * particle_spacing)
+            self.draw_star(screen, (x_pos, screen_y), star_size, star_color)
+    
+    def draw(self, screen, pos, radius, scale=1.0, color=None):
+        """Normal in-game rendering"""
+        screen_x, screen_y = pos
+        particle_spacing = int(30 * scale)
+        star_size = int(15 * scale)
+        start_x = screen_x - particle_spacing * 10
+        
+        for i in range(3):
+            opacity = 200 - (i * 50)
+            star_color = list(color or (255, 215, 0))  # Gold default
+            star_color.append(opacity)
+            x_pos = start_x + ((2 - i) * particle_spacing)
             self.draw_star(screen, (x_pos, screen_y), star_size, star_color)
     
     def draw_star(self, screen, pos, size, color):

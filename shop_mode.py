@@ -93,13 +93,13 @@ class ShopMode(GameMode):
             item_center = (display_size // 2, display_size // 2)
             
             if category == "trail":
-                # Draw trail directly using its own draw method
+                # Use preview rendering for trails
                 mock_player_pos = (display_size * 0.7, display_size // 2)
-                item.draw(item_surface, 
-                    mock_player_pos,  # Position near right edge
-                    display_size // 4,  # Radius
+                item.draw_preview(item_surface, 
+                    mock_player_pos,
+                    display_size // 4,
                     scale=1.0,
-                    color=THEME_TEXT)  # Use white color for visibility
+                    color=THEME_TEXT)
             elif category == "hat":
                 # Adjust hat position to be centered
                 hat_center = (display_size // 2, display_size // 2 + display_size // 6)
