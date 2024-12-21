@@ -42,6 +42,74 @@ class TopHat(SlotItem):
              int(screen_y - scaled_radius - hat_y_offset - hat_height),
              int(hat_width), int(hat_height)))
 
+class Crown(SlotItem):
+    def __init__(self):
+        super().__init__("crown", "Royal Crown")
+    
+    def draw(self, screen, pos, radius, scale=1.0, color=None):
+        screen_x, screen_y = pos
+        scaled_radius = int(radius * scale)
+        hat_y_offset = scaled_radius * 0.05
+        
+        # Draw crown base
+        crown_width = scaled_radius * 1.6
+        crown_height = scaled_radius * 0.8
+        
+        # Draw points
+        points = []
+        num_points = 5
+        for i in range(num_points):
+            x = screen_x - crown_width//2 + (crown_width * i//(num_points-1))
+            y = screen_y - scaled_radius - crown_height - hat_y_offset
+            points.append((x, y))
+            if i < num_points-1:  # Add valley between points
+                valley_x = screen_x - crown_width//2 + (crown_width * (i+0.5)//(num_points-1))
+                valley_y = screen_y - scaled_radius - crown_height//2 - hat_y_offset
+                points.append((valley_x, valley_y))
+        
+        # Add base points
+        points.append((screen_x + crown_width//2, screen_y - scaled_radius - hat_y_offset))
+        points.append((screen_x - crown_width//2, screen_y - scaled_radius - hat_y_offset))
+        
+        pygame.draw.polygon(screen, GOLD, points)
+        
+        # Add jewels
+        jewel_radius = scaled_radius * 0.15
+        for i in range(num_points):
+            x = screen_x - crown_width//2 + (crown_width * i//(num_points-1))
+            y = screen_y - scaled_radius - crown_height - hat_y_offset
+            pygame.draw.circle(screen, RED, (int(x), int(y)), int(jewel_radius))
+
+class BaseballCap(SlotItem):
+    def __init__(self):
+        super().__init__("baseball_cap", "Baseball Cap")
+    
+    def draw(self, screen, pos, radius, scale=1.0, color=None):
+        screen_x, screen_y = pos
+        scaled_radius = int(radius * scale)
+        hat_y_offset = scaled_radius * 0.05
+        
+        cap_color = color or RED
+        
+        # Draw cap base
+        cap_width = scaled_radius * 1.5
+        cap_height = scaled_radius * 0.6
+        
+        # Draw curved top
+        pygame.draw.arc(screen, cap_color,
+            (int(screen_x - cap_width//2),
+             int(screen_y - scaled_radius - cap_height),
+             int(cap_width), int(cap_height * 2)),
+            math.pi, 2 * math.pi)
+        
+        # Draw brim
+        brim_points = [
+            (screen_x - cap_width//2, screen_y - scaled_radius + hat_y_offset),
+            (screen_x - cap_width//1.5, screen_y - scaled_radius - cap_height//2),
+            (screen_x - cap_width//3, screen_y - scaled_radius - cap_height//1.5)
+        ]
+        pygame.draw.polygon(screen, cap_color, brim_points)
+
 # Face Items
 class HappyFace(SlotItem):
     def __init__(self):
@@ -95,6 +163,45 @@ class SadFace(SlotItem):
         pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, 
             max(1, scaled_radius//5))
 
+class CoolFace(SlotItem):
+    def __init__(self):
+        super().__init__("cool", "Cool Face")
+    
+    def draw(self, screen, pos, radius, scale=1.0, color=None):
+        screen_x, screen_y = pos
+        scaled_radius = int(radius * scale)
+        
+        # Draw sunglasses
+        glass_width = scaled_radius * 0.4
+        glass_height = scaled_radius * 0.25
+        glass_y = screen_y - scaled_radius * 0.3
+        
+        # Left lens
+        pygame.draw.ellipse(screen, BLACK,
+            (int(screen_x - glass_width * 1.5), int(glass_y),
+             int(glass_width), int(glass_height)))
+        
+        # Right lens
+        pygame.draw.ellipse(screen, BLACK,
+            (int(screen_x + glass_width * 0.5), int(glass_y),
+             int(glass_width), int(glass_height)))
+        
+        # Bridge
+        pygame.draw.line(screen, BLACK,
+            (int(screen_x - glass_width * 0.5), int(glass_y + glass_height * 0.5)),
+            (int(screen_x + glass_width * 0.5), int(glass_y + glass_height * 0.5)),
+            max(1, int(scaled_radius * 0.05)))
+        
+        # Draw smirk
+        smirk_rect = pygame.Rect(
+            int(screen_x - scaled_radius//3),
+            int(screen_y + scaled_radius//4),
+            scaled_radius//2,
+            scaled_radius//3
+        )
+        pygame.draw.arc(screen, BLACK, smirk_rect, 0, 3.14, 
+            max(1, scaled_radius//5))
+
 # Trail Items
 class CircleTrail(SlotItem):
     def __init__(self):
@@ -104,7 +211,14 @@ class CircleTrail(SlotItem):
         screen_x, screen_y = pos
         particle_spacing = int(25 * scale)
         base_particle_size = int(18 * scale)
-        start_x = screen_x - particle_spacing * 10
+        
+        # For shop preview, adjust the starting position
+        surface_width = getattr(screen, 'get_width', lambda: None)()
+        if surface_width and surface_width < 200:  # If it's a small surface (shop tile)
+            start_x = screen_x  # Start from the mock player position
+            particle_spacing = int(15 * scale)  # Smaller spacing for shop preview
+        else:
+            start_x = screen_x - particle_spacing * 10
         
         for i in range(3):
             particle_size = base_particle_size - (i * 2.0)
@@ -121,21 +235,79 @@ class CircleTrail(SlotItem):
                 pygame.draw.circle(particle_surface, current_color, 
                                  (particle_size, particle_size), r)
             
-            x_pos = start_x + ((2 - i) * (particle_spacing + particle_size))
+            # Adjust x position based on context
+            if surface_width and surface_width < 200:
+                x_pos = start_x - (i * particle_spacing)  # Draw to the left for shop preview
+            else:
+                x_pos = start_x + ((2 - i) * (particle_spacing + particle_size))
+                
             screen.blit(particle_surface, (x_pos, screen_y + 5))
+
+class StarTrail(SlotItem):
+    def __init__(self):
+        super().__init__("stars", "Star Trail")
+    
+    def draw(self, screen, pos, radius, scale=1.0, color=None):
+        screen_x, screen_y = pos
+        particle_spacing = int(30 * scale)
+        star_size = int(15 * scale)
+        
+        # For shop preview, adjust the starting position
+        surface_width = getattr(screen, 'get_width', lambda: None)()
+        if surface_width and surface_width < 200:  # If it's a small surface (shop tile)
+            start_x = screen_x  # Start from the mock player position
+            particle_spacing = int(15 * scale)  # Smaller spacing for shop preview
+        else:
+            start_x = screen_x - particle_spacing * 10
+        
+        for i in range(3):
+            opacity = 200 - (i * 50)
+            star_color = list(color or (255, 215, 0))  # Gold default
+            star_color.append(opacity)
+            
+            # Adjust x position based on context
+            if surface_width and surface_width < 200:
+                x_pos = start_x - (i * particle_spacing)  # Draw to the left for shop preview
+            else:
+                x_pos = start_x + ((2 - i) * particle_spacing)
+            
+            self.draw_star(screen, (x_pos, screen_y), star_size, star_color)
+    
+    def draw_star(self, screen, pos, size, color):
+        x, y = pos
+        points = []
+        for i in range(5):
+            # Outer points
+            angle = i * (2 * math.pi / 5) - math.pi / 2
+            points.append((
+                x + size * math.cos(angle),
+                y + size * math.sin(angle)
+            ))
+            # Inner points
+            angle += math.pi / 5
+            points.append((
+                x + size * 0.4 * math.cos(angle),
+                y + size * 0.4 * math.sin(angle)
+            ))
+        
+        pygame.draw.polygon(screen, color, points)
 
 # Create instances of all items
 ITEMS = {
     "hat": {
         "none": NoItem("No Hat"),
-        "top_hat": TopHat()
+        "top_hat": TopHat(),
+        "crown": Crown(),
+        "baseball_cap": BaseballCap()
     },
     "face": {
         "happy": HappyFace(),
-        "sad": SadFace()
+        "sad": SadFace(),
+        "cool": CoolFace()
     },
     "trail": {
         "none": NoItem("No Trail"),
-        "circles": CircleTrail()
+        "circles": CircleTrail(),
+        "stars": StarTrail()
     }
 } 

@@ -170,7 +170,7 @@ class RunnerCustomizationMode(GameMode):
 
     def draw_preview(self, screen):
         # Get current customization values
-        body_color = self.slots["body_color"].current_item["color"]  # Still a dictionary
+        body_color = self.slots["body_color"].current_item["color"]
         
         # Handle SlotItem instances
         face_item = self.slots["body"].current_item
@@ -182,11 +182,21 @@ class RunnerCustomizationMode(GameMode):
         trail_item = self.slots["trail"].current_item
         trail_type = trail_item.id if hasattr(trail_item, 'id') else trail_item["id"]
 
-        # Draw trail if enabled
-        if trail_type == "circles":
-            self.draw_trail(screen)
+        # Draw trail if enabled using PlayerRenderer
+        if trail_type != "none":
+            # Position trail to the right of the player
+            trail_offset = self.preview_radius * 2  # Offset by player diameter
+            trail_pos = (self.preview_pos[0] + trail_offset, self.preview_pos[1])
+            PlayerRenderer.draw_trail(
+                screen=screen,
+                pos=trail_pos,
+                radius=self.preview_radius,
+                scale=1.0,
+                trail_type=trail_type,
+                trail_color=self.slots["trail_color"].current_item["color"]
+            )
 
-        # Use shared renderer
+        # Use shared renderer for player
         PlayerRenderer.draw_player(
             screen=screen,
             pos=self.preview_pos,
@@ -196,30 +206,6 @@ class RunnerCustomizationMode(GameMode):
             hat_type=hat_type,
             scale=1.0  # Preview uses base scale
         )
-
-    def draw_trail(self, screen):
-        particle_spacing = int(25 * self.scale)
-        base_particle_size = int(18 * self.scale)
-        start_x = self.preview_pos[0] - particle_spacing * 10
-        
-        for i in range(3):
-            particle_size = base_particle_size - (i * 2.0)
-            opacity = 200 - (i * 50)
-            particle_color = list(self.slots["trail_color"].current_item["color"])
-            particle_color.append(opacity)
-            
-            particle_surface = pygame.Surface((particle_size * 2, particle_size * 2), pygame.SRCALPHA)
-            
-            for radius in range(int(particle_size), 0, -1):
-                current_opacity = int(opacity * (radius / particle_size) * 0.8)
-                current_color = list(self.slots["trail_color"].current_item["color"])
-                current_color.append(current_opacity)
-                pygame.draw.circle(particle_surface, current_color, 
-                                 (particle_size, particle_size), radius)
-            
-            x_pos = start_x + ((2 - i) * (particle_spacing + particle_size))
-            screen.blit(particle_surface, 
-                       (x_pos, self.preview_pos[1] + 5))
 
     @staticmethod
     def lerp_color(color1, color2, t):

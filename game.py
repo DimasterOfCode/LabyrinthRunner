@@ -11,6 +11,7 @@ from menu_mode import MenuMode
 from runner_customization_mode import RunnerCustomizationMode
 from level_editor_mode import LevelEditorMode
 from play_mode import PlayMode, GameState  # Add GameState import here
+from shop_mode import ShopMode
 
 class Game:
     def __init__(self):
@@ -38,6 +39,7 @@ class Game:
         
         # Create instances of game modes
         self.modes["menu"] = MenuMode(self)
+        self.modes["shop"] = ShopMode(self)
         self.modes["runner_customization"] = RunnerCustomizationMode(self)
         self.modes["level_editor"] = LevelEditorMode(self, self.level_manager)
         self.modes["play"] = PlayMode(self, self.level_manager)

@@ -3,6 +3,7 @@ import pygame
 from constants import *
 import math
 from items import ITEMS
+from player_renderer import PlayerRenderer
 
 
 class GameObject:
@@ -91,24 +92,6 @@ class Particle:
             screen.blit(surface, 
                        (int(screen_x - scaled_size), 
                         int(screen_y - scaled_size)))
-
-class PlayerRenderer:
-    @staticmethod
-    def draw_player(screen, pos, radius, color, face_type, hat_type, scale=1.0, trail_type="none", trail_color=None):
-        screen_x, screen_y = pos
-        scaled_radius = int(radius * scale)
-
-        # Draw trail first (behind player)
-        ITEMS["trail"][trail_type].draw(screen, pos, radius, scale, trail_color)
-        
-        # Draw body
-        pygame.draw.circle(screen, color, (int(screen_x), int(screen_y)), scaled_radius)
-        
-        # Draw face
-        ITEMS["face"][face_type].draw(screen, pos, radius, scale)
-        
-        # Draw hat
-        ITEMS["hat"][hat_type].draw(screen, pos, radius, scale, color)
 
 class Player(MovableObject):
     SYMBOL = 'S'
