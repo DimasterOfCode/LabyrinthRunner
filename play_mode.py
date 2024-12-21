@@ -58,10 +58,11 @@ class PlayMode(GameMode):
         # Get customization settings
         customization_mode = self.game.modes["runner_customization"]
         player_color = customization_mode.get_player_color()
-        player_face = customization_mode.current_face
+        player_face = customization_mode.get_player_face()
         trail_color = customization_mode.get_trail_color()
+        hat_type = customization_mode.get_player_hat()
         
-        # Create player with the selected face type and trail color
+        # Create player with all customization options
         self.player = Player(
             x=start_pos[0],
             y=start_pos[1],
@@ -70,7 +71,8 @@ class PlayMode(GameMode):
             collision_checker=self.check_collision,
             color=player_color,
             face_type=player_face,
-            trail_color=trail_color
+            trail_color=trail_color,
+            hat_type=hat_type
         )
         
         # Reset all game objects

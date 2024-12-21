@@ -119,7 +119,7 @@ class Player(MovableObject):
         screen_y = (y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
         
         # Scale the radius according to zoom
-        scaled_radius = int(self.radius * game.zoom)  # Convert to int
+        scaled_radius = int(self.radius * game.zoom)
         
         # Draw the player circle
         pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), scaled_radius)
@@ -130,7 +130,7 @@ class Player(MovableObject):
         pygame.draw.circle(screen, BLACK, (int(screen_x - eye_offset), int(screen_y - eye_offset)), eye_radius)
         pygame.draw.circle(screen, BLACK, (int(screen_x + eye_offset), int(screen_y - eye_offset)), eye_radius)
         
-        # Draw mouth - ensure all rect coordinates are integers
+        # Draw mouth
         if self.face_type == "happy":
             smile_rect = pygame.Rect(
                 int(screen_x - scaled_radius//2),
@@ -147,6 +147,27 @@ class Player(MovableObject):
                 scaled_radius//2
             )
             pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, scaled_radius//5))
+
+        # Draw hat
+        if self.hat_type == "black_hat":
+            hat_y_offset = scaled_radius * 0.05  # Make hat sit lower on the circle
+            
+            # Draw top hat
+            brim_width = scaled_radius * 1.8
+            hat_height = scaled_radius * 1.2
+            hat_width = scaled_radius * 1.2
+            
+            # Draw brim
+            pygame.draw.ellipse(screen, BLACK,
+                (int(screen_x - brim_width//2),
+                 int(screen_y - scaled_radius - hat_y_offset),
+                 int(brim_width), int(scaled_radius * 0.3)))
+            
+            # Draw top part
+            pygame.draw.rect(screen, BLACK,
+                (int(screen_x - hat_width//2),
+                 int(screen_y - scaled_radius - hat_y_offset - hat_height),
+                 int(hat_width), int(hat_height)))
 
     def set_direction(self, direction):
         if self.direction is None:
