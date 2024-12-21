@@ -216,9 +216,10 @@ class PlayMode(GameMode):
             PLAYER_SPEED, 
             self.check_collision, 
             color,
-            customization_mode.current_face,
+            customization_mode.get_player_face(),
             customization_mode.get_trail_color(),
-            customization_mode.current_hat
+            customization_mode.get_player_hat(),
+            customization_mode.get_trail_type()
         )
         return player
 

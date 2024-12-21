@@ -43,7 +43,7 @@ class RunnerCustomizationMode(GameMode):
         self.slots = {
             "hat": CustomizationSlot("Hat", [
                 {"id": "none", "name": "No Hat"},
-                {"id": "black_hat", "name": "Black Hat"}
+                {"id": "top_hat", "name": "Top Hat"}
             ]),
             "body": CustomizationSlot("Body", [
                 {"id": "happy", "name": "Happy Face"},

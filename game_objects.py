@@ -2,6 +2,7 @@ import time
 import pygame
 from constants import *
 import math
+from items import ITEMS
 
 
 class GameObject:
@@ -93,75 +94,25 @@ class Particle:
 
 class PlayerRenderer:
     @staticmethod
-    def draw_player(screen, pos, radius, color, face_type, hat_type, scale=1.0):
-        """Draw a player character with all customizations
-        Args:
-            screen: pygame surface to draw on
-            pos: (x,y) tuple of player position
-            radius: base radius before scaling
-            color: RGB color tuple for body
-            face_type: "happy" or "sad"
-            hat_type: "none" or "black_hat" etc
-            scale: size multiplier (default 1.0)
-        """
+    def draw_player(screen, pos, radius, color, face_type, hat_type, scale=1.0, trail_type="none", trail_color=None):
         screen_x, screen_y = pos
         scaled_radius = int(radius * scale)
 
+        # Draw trail first (behind player)
+        ITEMS["trail"][trail_type].draw(screen, pos, radius, scale, trail_color)
+        
         # Draw body
         pygame.draw.circle(screen, color, (int(screen_x), int(screen_y)), scaled_radius)
         
-        # Draw eyes
-        eye_radius = max(2, scaled_radius // 5)
-        eye_offset = scaled_radius // 3
-        pygame.draw.circle(screen, BLACK, 
-            (int(screen_x - eye_offset), int(screen_y - eye_offset)), eye_radius)
-        pygame.draw.circle(screen, BLACK, 
-            (int(screen_x + eye_offset), int(screen_y - eye_offset)), eye_radius)
+        # Draw face
+        ITEMS["face"][face_type].draw(screen, pos, radius, scale)
         
-        # Draw mouth
-        if face_type == "happy":
-            smile_rect = pygame.Rect(
-                int(screen_x - scaled_radius//2),
-                int(screen_y),
-                scaled_radius,
-                scaled_radius//2
-            )
-            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, 
-                max(1, scaled_radius//5))
-        else:  # sad face
-            frown_rect = pygame.Rect(
-                int(screen_x - scaled_radius//2),
-                int(screen_y + scaled_radius//4),
-                scaled_radius,
-                scaled_radius//2
-            )
-            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, 
-                max(1, scaled_radius//5))
-
         # Draw hat
-        if hat_type == "black_hat":
-            hat_y_offset = scaled_radius * 0.05
-            
-            # Draw top hat
-            brim_width = scaled_radius * 1.8
-            hat_height = scaled_radius * 1.2
-            hat_width = scaled_radius * 1.2
-            
-            # Draw brim
-            pygame.draw.ellipse(screen, BLACK,
-                (int(screen_x - brim_width//2),
-                 int(screen_y - scaled_radius - hat_y_offset),
-                 int(brim_width), int(scaled_radius * 0.3)))
-            
-            # Draw top part
-            pygame.draw.rect(screen, BLACK,
-                (int(screen_x - hat_width//2),
-                 int(screen_y - scaled_radius - hat_y_offset - hat_height),
-                 int(hat_width), int(hat_height)))
+        ITEMS["hat"][hat_type].draw(screen, pos, radius, scale, color)
 
 class Player(MovableObject):
     SYMBOL = 'S'
-    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy", trail_color=PARTICLE_COLOR, hat_type="none"):
+    def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy", trail_color=PARTICLE_COLOR, hat_type="none", trail_type="none"):
         super().__init__(x, y, radius, speed)
         self.collision_checker = collision_checker
         self.direction = None
@@ -169,6 +120,7 @@ class Player(MovableObject):
         self.face_type = face_type
         self.trail_color = trail_color
         self.hat_type = hat_type
+        self.trail_type = trail_type
         self.particles = []
         self.last_particle_time = time.time()
         self.is_moving = False
@@ -192,7 +144,9 @@ class Player(MovableObject):
             color=self.color,
             face_type=self.face_type,
             hat_type=self.hat_type,
-            scale=game.zoom
+            scale=game.zoom,
+            trail_type=self.trail_type,
+            trail_color=self.trail_color
         )
 
     def set_direction(self, direction):
