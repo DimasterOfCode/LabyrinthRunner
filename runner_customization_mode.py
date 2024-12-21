@@ -166,117 +166,25 @@ class RunnerCustomizationMode(GameMode):
         self.draw_preview(screen)
 
     def draw_preview(self, screen):
-        # Draw body
+        # Get current customization values
         body_color = self.slots["body_color"].current_item["color"]
-        pygame.draw.circle(screen, body_color, self.preview_pos, self.preview_radius)
-
-        # Draw face
-        self.draw_face(screen)
-
-        # Draw hat
-        if self.slots["hat"].current_item["id"] == "black_hat":
-            self.draw_hat(screen, self.preview_pos, self.preview_radius)
+        face_type = self.slots["body"].current_item["id"]
+        hat_type = self.slots["hat"].current_item["id"]
 
         # Draw trail if enabled
         if self.slots["trail"].current_item["id"] == "circles":
             self.draw_trail(screen)
 
-    def draw_face(self, screen):
-        eye_radius = max(3, self.preview_radius // 5)
-        eye_offset = self.preview_radius // 3
-        
-        # Draw eyes
-        pygame.draw.circle(screen, BLACK, 
-                          (int(self.preview_pos[0] - eye_offset), 
-                           int(self.preview_pos[1] - eye_offset)), eye_radius)
-        pygame.draw.circle(screen, BLACK, 
-                          (int(self.preview_pos[0] + eye_offset), 
-                           int(self.preview_pos[1] - eye_offset)), eye_radius)
-        
-        # Draw mouth
-        if self.slots["body"].current_item["id"] == "happy":
-            smile_rect = (int(self.preview_pos[0] - self.preview_radius//2), 
-                         int(self.preview_pos[1]), 
-                         self.preview_radius, 
-                         self.preview_radius//2)
-            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, 
-                           max(2, self.preview_radius//5))
-        else:
-            frown_rect = (int(self.preview_pos[0] - self.preview_radius//2), 
-                         int(self.preview_pos[1] + self.preview_radius//4), 
-                         self.preview_radius, 
-                         self.preview_radius//2)
-            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, 
-                           max(2, self.preview_radius//5))
-
-    def draw_hat(self, screen, pos, radius):
-        # Reduce the offset even further to make hats sit much lower on the circle
-        hat_y_offset = radius * 0.05  # Changed from 0.2 to 0.05
-        
-        if self.slots["hat"].current_item["id"] == "black_hat":
-            # Draw top hat
-            brim_width = radius * 1.8
-            hat_height = radius * 1.2
-            hat_width = radius * 1.2
-            
-            # Draw brim
-            pygame.draw.ellipse(screen, BLACK,
-                (pos[0] - brim_width//2,
-                 pos[1] - radius - hat_y_offset,
-                 brim_width, radius * 0.3))
-            
-            # Draw top part
-            pygame.draw.rect(screen, BLACK,
-                (pos[0] - hat_width//2,
-                 pos[1] - radius - hat_y_offset - hat_height,
-                 hat_width, hat_height))
-                
-        elif self.slots["hat"].current_item["id"] == "crown":
-            # Draw crown with rounded points and curved base
-            # Base curve points
-            base_points = [
-                (pos[0] - radius, pos[1] - radius + hat_y_offset),  # Bottom left
-                (pos[0], pos[1] - radius + hat_y_offset + radius * 0.1),  # Bottom middle curve
-                (pos[0] + radius, pos[1] - radius + hat_y_offset),  # Bottom right
-            ]
-            pygame.draw.lines(screen, GOLD, False, base_points, width=max(2, int(radius * 0.15)))
-            
-            # Draw the points with circles on top
-            point_height = radius * 0.4
-            points = [
-                (int(pos[0] - radius * 0.8), point_height),  # First point
-                (int(pos[0] - radius * 0.4), point_height),  # Second point
-                (int(pos[0]), point_height),  # Middle point
-                (int(pos[0] + radius * 0.4), point_height),  # Fourth point
-                (int(pos[0] + radius * 0.8), point_height)  # Fifth point
-            ]
-            
-            # Draw the triangular points
-            for i, (px, h) in enumerate(points):
-                point_points = [
-                    (px, int(pos[1] - radius + hat_y_offset - h)),  # Top
-                    (px - radius * 0.15, int(pos[1] - radius + hat_y_offset)),  # Bottom left
-                    (px + radius * 0.15, int(pos[1] - radius + hat_y_offset))  # Bottom right
-                ]
-                pygame.draw.polygon(screen, GOLD, point_points)
-                
-                # Draw circles on top of points
-                circle_radius = max(2, int(radius * 0.1))
-                pygame.draw.circle(screen, GOLD, 
-                                 (px, int(pos[1] - radius + hat_y_offset - h)), 
-                                 circle_radius)
-        
-        elif self.slots["hat"].current_item["id"] == "cap":
-            pygame.draw.ellipse(screen, self.slots["body_color"].current_item["color"],
-                (pos[0] - radius * 1.2,
-                 pos[1] - radius - hat_y_offset + radius * 0.3,
-                 radius * 1.5, radius * 0.3))
-            
-            pygame.draw.arc(screen, self.slots["body_color"].current_item["color"],
-                (pos[0] - radius,
-                 pos[1] - radius - hat_y_offset - radius * 0.5,
-                 radius * 2, radius * 1.2),
-                math.pi, 2 * math.pi)
+        # Use shared renderer
+        PlayerRenderer.draw_player(
+            screen=screen,
+            pos=self.preview_pos,
+            radius=self.preview_radius,
+            color=body_color,
+            face_type=face_type,
+            hat_type=hat_type,
+            scale=1.0  # Preview uses base scale
+        )
 
     def draw_trail(self, screen):
         particle_spacing = int(25 * self.scale)

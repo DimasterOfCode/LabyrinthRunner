@@ -91,6 +91,74 @@ class Particle:
                        (int(screen_x - scaled_size), 
                         int(screen_y - scaled_size)))
 
+class PlayerRenderer:
+    @staticmethod
+    def draw_player(screen, pos, radius, color, face_type, hat_type, scale=1.0):
+        """Draw a player character with all customizations
+        Args:
+            screen: pygame surface to draw on
+            pos: (x,y) tuple of player position
+            radius: base radius before scaling
+            color: RGB color tuple for body
+            face_type: "happy" or "sad"
+            hat_type: "none" or "black_hat" etc
+            scale: size multiplier (default 1.0)
+        """
+        screen_x, screen_y = pos
+        scaled_radius = int(radius * scale)
+
+        # Draw body
+        pygame.draw.circle(screen, color, (int(screen_x), int(screen_y)), scaled_radius)
+        
+        # Draw eyes
+        eye_radius = max(2, scaled_radius // 5)
+        eye_offset = scaled_radius // 3
+        pygame.draw.circle(screen, BLACK, 
+            (int(screen_x - eye_offset), int(screen_y - eye_offset)), eye_radius)
+        pygame.draw.circle(screen, BLACK, 
+            (int(screen_x + eye_offset), int(screen_y - eye_offset)), eye_radius)
+        
+        # Draw mouth
+        if face_type == "happy":
+            smile_rect = pygame.Rect(
+                int(screen_x - scaled_radius//2),
+                int(screen_y),
+                scaled_radius,
+                scaled_radius//2
+            )
+            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, 
+                max(1, scaled_radius//5))
+        else:  # sad face
+            frown_rect = pygame.Rect(
+                int(screen_x - scaled_radius//2),
+                int(screen_y + scaled_radius//4),
+                scaled_radius,
+                scaled_radius//2
+            )
+            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, 
+                max(1, scaled_radius//5))
+
+        # Draw hat
+        if hat_type == "black_hat":
+            hat_y_offset = scaled_radius * 0.05
+            
+            # Draw top hat
+            brim_width = scaled_radius * 1.8
+            hat_height = scaled_radius * 1.2
+            hat_width = scaled_radius * 1.2
+            
+            # Draw brim
+            pygame.draw.ellipse(screen, BLACK,
+                (int(screen_x - brim_width//2),
+                 int(screen_y - scaled_radius - hat_y_offset),
+                 int(brim_width), int(scaled_radius * 0.3)))
+            
+            # Draw top part
+            pygame.draw.rect(screen, BLACK,
+                (int(screen_x - hat_width//2),
+                 int(screen_y - scaled_radius - hat_y_offset - hat_height),
+                 int(hat_width), int(hat_height)))
+
 class Player(MovableObject):
     SYMBOL = 'S'
     def __init__(self, x, y, radius, speed, collision_checker, color=GOLD, face_type="happy", trail_color=PARTICLE_COLOR, hat_type="none"):
@@ -110,64 +178,22 @@ class Player(MovableObject):
         for particle in self.particles:
             particle.draw(screen, game)
             
-        # Draw player
+        # Calculate screen position
         x = interpolated_x if interpolated_x is not None else self.x
         y = interpolated_y if interpolated_y is not None else self.y
-        
-        # Convert world coordinates to screen coordinates
         screen_x = (x - game.camera_x) * game.zoom
         screen_y = (y - game.camera_y) * game.zoom + SCORE_AREA_HEIGHT
         
-        # Scale the radius according to zoom
-        scaled_radius = int(self.radius * game.zoom)
-        
-        # Draw the player circle
-        pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), scaled_radius)
-        
-        # Draw eyes
-        eye_radius = max(2, scaled_radius // 5)
-        eye_offset = scaled_radius // 3
-        pygame.draw.circle(screen, BLACK, (int(screen_x - eye_offset), int(screen_y - eye_offset)), eye_radius)
-        pygame.draw.circle(screen, BLACK, (int(screen_x + eye_offset), int(screen_y - eye_offset)), eye_radius)
-        
-        # Draw mouth
-        if self.face_type == "happy":
-            smile_rect = pygame.Rect(
-                int(screen_x - scaled_radius//2),
-                int(screen_y),
-                scaled_radius,
-                scaled_radius//2
-            )
-            pygame.draw.arc(screen, BLACK, smile_rect, 3.14, 2 * 3.14, max(1, scaled_radius//5))
-        else:  # sad face
-            frown_rect = pygame.Rect(
-                int(screen_x - scaled_radius//2),
-                int(screen_y + scaled_radius//4),
-                scaled_radius,
-                scaled_radius//2
-            )
-            pygame.draw.arc(screen, BLACK, frown_rect, 0, 3.14, max(1, scaled_radius//5))
-
-        # Draw hat
-        if self.hat_type == "black_hat":
-            hat_y_offset = scaled_radius * 0.05  # Make hat sit lower on the circle
-            
-            # Draw top hat
-            brim_width = scaled_radius * 1.8
-            hat_height = scaled_radius * 1.2
-            hat_width = scaled_radius * 1.2
-            
-            # Draw brim
-            pygame.draw.ellipse(screen, BLACK,
-                (int(screen_x - brim_width//2),
-                 int(screen_y - scaled_radius - hat_y_offset),
-                 int(brim_width), int(scaled_radius * 0.3)))
-            
-            # Draw top part
-            pygame.draw.rect(screen, BLACK,
-                (int(screen_x - hat_width//2),
-                 int(screen_y - scaled_radius - hat_y_offset - hat_height),
-                 int(hat_width), int(hat_height)))
+        # Use shared renderer
+        PlayerRenderer.draw_player(
+            screen=screen,
+            pos=(screen_x, screen_y),
+            radius=self.radius,
+            color=self.color,
+            face_type=self.face_type,
+            hat_type=self.hat_type,
+            scale=game.zoom
+        )
 
     def set_direction(self, direction):
         if self.direction is None:
