@@ -1,6 +1,7 @@
 import random
 import time
 import math
+import os
 
 import pygame
 import pygame.gfxdraw
@@ -64,14 +65,18 @@ class MenuMode(GameMode):
         self.title_bounce_speed = 3
         self.title_bounce_height = 10
         
-        # Particle system
-        self.particles = []
-        self.particle_colors = [(255, 215, 0), (135, 206, 250), (255, 182, 193)]  # Gold, Light Blue, Light Pink
-        
         # Stats display
         self.show_stats = True
         self.stats_alpha = 0
         self.stats_fade_speed = 5
+        
+        # Add background image loading after other initializations
+        background_path = os.path.join("assets", "background.png")
+        try:
+            self.background = pygame.image.load(background_path).convert()
+        except pygame.error as e:
+            print(f"Warning: Could not load background image: {e}")
+            self.background = None
 
     def update_fonts(self, screen):
         """Update font sizes based on screen dimensions"""
@@ -85,31 +90,11 @@ class MenuMode(GameMode):
         self.animation_offset = (self.animation_offset + self.animation_speed) % (2 * math.pi)
         self.title_bounce = math.sin(pygame.time.get_ticks() / 500) * self.title_bounce_height
         
-        # Update particles
-        self.update_particles()
-        
         # Update stats fade effect
         if self.show_stats:
             self.stats_alpha = min(255, self.stats_alpha + self.stats_fade_speed)
         else:
             self.stats_alpha = max(0, self.stats_alpha - self.stats_fade_speed)
-
-    def update_particles(self):
-        # Add new particles occasionally
-        if random.random() < 0.1:
-            self.particles.append({
-                'x': random.randint(0, WIDTH),
-                'y': HEIGHT + 10,
-                'speed': random.uniform(1, 3),
-                'size': random.randint(2, 6),
-                'color': random.choice(self.particle_colors)
-            })
-        
-        # Update existing particles
-        for particle in self.particles[:]:
-            particle['y'] -= particle['speed']
-            if particle['y'] < -10:
-                self.particles.remove(particle)
 
     def render(self, screen, interpolation):
         # Update fonts for current screen size
@@ -119,15 +104,33 @@ class MenuMode(GameMode):
         screen_height = screen.get_height()
         scale = self.get_screen_scale(screen)
         
-        # Draw animated background
-        screen.fill(THEME_BACKGROUND)
-        
-        # Draw particles with adjusted coordinates
-        for particle in self.particles:
-            pygame.draw.circle(screen, particle['color'], 
-                             (int(particle['x'] * screen_width/WIDTH), 
-                              int(particle['y'] * screen_height/HEIGHT)), 
-                             particle['size'])
+        # Draw background with dimming effect
+        if self.background:
+            # Calculate scaling to fit width while maintaining aspect ratio
+            bg_aspect_ratio = self.background.get_width() / self.background.get_height()
+            new_width = screen_width
+            new_height = int(screen_width / bg_aspect_ratio)
+            
+            # If height is too short, center it vertically
+            y_offset = (screen_height - new_height) // 2
+            
+            scaled_background = pygame.transform.scale(self.background, (new_width, new_height))
+            
+            # Create a dark overlay matching the screen size
+            dark_overlay = pygame.Surface((screen_width, screen_height))
+            dark_overlay.fill((0, 0, 0))  # Black overlay
+            
+            # Fill screen with black first to cover any gaps
+            screen.fill((0, 0, 0))
+            
+            # Draw background centered
+            screen.blit(scaled_background, (0, y_offset))
+            
+            # Apply overlay
+            dark_overlay.set_alpha(128)
+            screen.blit(dark_overlay, (0, 0))
+        else:
+            screen.fill(THEME_BACKGROUND)
         
         # Draw animated title with bounce effect - adjust for screen size
         title = self.title_font.render("Labyrinth Runner", True, THEME_TEXT)
@@ -140,9 +143,6 @@ class MenuMode(GameMode):
                                         True, THEME_SECONDARY)
         subtitle_rect = subtitle.get_rect(midtop=(screen_width//2, title_rect.bottom + 20))
         screen.blit(subtitle, subtitle_rect)
-        
-        # Draw enemy and player characters
-        self.draw_characters(screen)
         
         # Calculate spacing based on screen height
         total_buttons = len(self.buttons)
@@ -166,7 +166,7 @@ class MenuMode(GameMode):
                                border_radius=5)
                 
                 # Draw description
-                desc = self.small_font.render(button["description"], True, THEME_TEXT)
+                desc = self.small_font.render(button["description"], True, THEME_TEXT_SECONDARY)
                 desc_rect = desc.get_rect(midtop=(screen_width//2, button_rect.bottom + 5))
                 screen.blit(desc, desc_rect)
             
@@ -188,92 +188,6 @@ class MenuMode(GameMode):
             text_rect = text_surface.get_rect(center=(screen_width//2, y_pos))
             screen.blit(text_surface, text_rect)
             y_pos += 25
-
-    def draw_characters(self, screen):
-        screen_width = screen.get_width()
-        screen_height = screen.get_height()
-        
-        # Calculate scale factor based on screen dimensions
-        scale = min(screen_width/WIDTH, screen_height/HEIGHT)
-        
-        # Base sizes scaled by screen
-        base_radius = int(80 * scale)
-        base_eye_radius = int(10 * scale)
-        base_eye_offset = int(25 * scale)
-        base_eye_shift = int(10 * scale)
-        base_eyebrow_length = int(20 * scale)
-        base_line_width = max(2, int(4 * scale))  # Ensure minimum line width of 2
-        
-        # Update enemy position - move further left
-        enemy_center = (screen_width//2 - screen_width//3, screen_height//2 - 40 * scale)
-        enemy_radius = base_radius
-        
-        # Draw main enemy circle with pulsing effect
-        pulse = math.sin(self.animation_offset) * 5 * scale
-        pygame.draw.circle(screen, (255, 0, 0), enemy_center, enemy_radius + pulse, base_line_width)
-        
-        # Draw evil eyes with animation
-        eye_y_offset = math.sin(self.animation_offset) * 3 * scale
-        
-        # Left eye
-        pygame.draw.circle(screen, (255, 0, 0), 
-                         (int(enemy_center[0] - base_eye_offset + base_eye_shift), 
-                          int(enemy_center[1] - 15 * scale + eye_y_offset)), 
-                         base_eye_radius)
-        # Right eye
-        pygame.draw.circle(screen, (255, 0, 0), 
-                         (int(enemy_center[0] + base_eye_offset + base_eye_shift), 
-                          int(enemy_center[1] - 15 * scale + eye_y_offset)), 
-                         base_eye_radius)
-        
-        # Draw evil eyebrows
-        eyebrow_angle = -math.pi / 6
-        
-        # Left and right eyebrows
-        for x_mult in [-1, 1]:
-            brow_start = (enemy_center[0] + x_mult * base_eye_offset + base_eye_shift 
-                         - x_mult * base_eyebrow_length * math.cos(eyebrow_angle),
-                         enemy_center[1] - 30 * scale 
-                         - base_eyebrow_length * math.sin(eyebrow_angle))
-            brow_end = (enemy_center[0] + x_mult * base_eye_offset + base_eye_shift 
-                       + x_mult * base_eyebrow_length * math.cos(eyebrow_angle),
-                       enemy_center[1] - 30 * scale 
-                       + base_eyebrow_length * math.sin(eyebrow_angle))
-            pygame.draw.line(screen, (255, 0, 0), brow_start, brow_end, base_line_width)
-        
-        # Draw evil smile with animation
-        smile_offset = math.sin(self.animation_offset) * 5 * scale
-        smile_rect = pygame.Rect(enemy_center[0] - 35 * scale + base_eye_shift, 
-                               enemy_center[1] - 30 * scale + smile_offset, 
-                               70 * scale, 50 * scale)
-        pygame.draw.arc(screen, (255, 0, 0), smile_rect, math.pi, 2 * math.pi, base_line_width)
-        
-        # Update player position - move further right
-        player_center = (screen_width//2 + screen_width//3, screen_height//2 - 40 * scale)
-        player_radius = base_radius
-        
-        # Draw player with bounce animation
-        bounce = math.sin(self.animation_offset * 2) * 10 * scale
-        pygame.draw.circle(screen, THEME_SECONDARY, 
-                         (player_center[0], player_center[1] + bounce), 
-                         player_radius, base_line_width)
-        
-        # Draw player eyes
-        eye_backward_shift = base_eye_shift  # Shift eyes left to look at enemy
-        pygame.draw.circle(screen, THEME_SECONDARY, 
-                         (int(player_center[0] - base_eye_offset - eye_backward_shift), 
-                          int(player_center[1] - 15 * scale + bounce)), 
-                         base_eye_radius)
-        pygame.draw.circle(screen, THEME_SECONDARY, 
-                         (int(player_center[0] + base_eye_offset - eye_backward_shift), 
-                          int(player_center[1] - 15 * scale + bounce)), 
-                         base_eye_radius)
-        
-        # Draw player mouth
-        pygame.draw.circle(screen, THEME_SECONDARY,
-                         (int(player_center[0] - eye_backward_shift), 
-                          int(player_center[1] + 15 * scale + bounce)),
-                         base_eye_radius)
 
     def draw_help_overlay(self, screen):
         screen_width = screen.get_width()
