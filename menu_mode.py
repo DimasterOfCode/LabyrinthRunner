@@ -32,11 +32,12 @@ class MenuMode(GameMode):
                 "action": lambda: self.game.set_mode("play"),
                 "description": "Start your adventure"
             },
-            {
-                "text": "Shop",
-                "action": lambda: self.game.set_mode("shop"),
-                "description": "Browse and purchase items"
-            },
+            # Uncomment when shop is ready
+            # {
+            #     "text": "Shop",
+            #     "action": lambda: self.game.set_mode("shop"),
+            #     "description": "Browse and purchase items"
+            # },
             {
                 "text": "Level Editor",
                 "action": lambda: self.game.set_mode("level_editor"),

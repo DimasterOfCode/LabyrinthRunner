@@ -50,9 +50,9 @@ class RunnerCustomizationMode(GameMode):
                 ITEMS["face"]["sad"]
             ]),
             "body_color": CustomizationSlot("Body Color", [
+                {"id": "yellow", "name": "Yellow", "color": (255, 255, 0)},
                 {"id": "red", "name": "Red", "color": (255, 0, 0)},
                 {"id": "green", "name": "Green", "color": (0, 255, 0)},
-                {"id": "yellow", "name": "Yellow", "color": (255, 255, 0)},
                 {"id": "magenta", "name": "Magenta", "color": (255, 0, 255)},
                 {"id": "blue", "name": "Blue", "color": (0, 0, 255)}
             ]),
